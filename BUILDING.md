@@ -20,7 +20,7 @@ For Linux the instructions for Ubuntu are provided, but you can find the equival
 
 ```bash
 # For Ubuntu, simply run:
-sudo apt-get install cmake ninja-build libsdl2-dev libgtk-3-dev lld llvm clang
+sudo apt-get install cmake ninja-build libsdl2-dev libgtk-3-dev libusb-1.0-0-dev lld llvm clang
 ```
 
 ### Windows
@@ -109,3 +109,16 @@ The patches in `oot/patches` are built with the same MIPS-capable `clang` and `l
 
 > [!IMPORTANT]
 > As with Majora's Mask, you should select the standard (compressed) ROM in the game itself, not the decompressed one.
+
+## GameCube Controller Adapter
+
+Both games support Nintendo's official GameCube controller adapter (WUP-028) and compatible adapters in Wii U mode, using [libusb](https://libusb.info/). Each connected controller appears as a regular controller named "GameCube Controller (Port N)", so it can be rebound in the controls menu and supports rumble (which needs the adapter's second USB plug to be connected). The digital clicks at the end of the L and R triggers can be bound separately from the analog triggers and are shown as "L Click" and "R Click".
+
+Support is controlled by the `ZELDA64_GC_ADAPTER` CMake option (on by default). On Windows, CMake downloads libusb and `libusb-1.0.dll` is copied next to the executable, which needs to be shipped with it. On other platforms, libusb is found with pkg-config and support is disabled if it isn't installed.
+
+To use the adapter:
+- **Windows:** Install the WinUSB driver for the adapter ("WUP-028") with [Zadig](https://zadig.akeo.ie/), the same setup as Dolphin.
+- **Linux:** Add a udev rule so the adapter can be accessed without root, such as Dolphin's: `SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="057e", ATTRS{idProduct}=="0337", TAG+="uaccess"`
+- **macOS:** No setup is needed.
+
+Only one program can use the adapter at a time, so close Dolphin (or other emulators using it) before starting the game.

@@ -250,6 +250,7 @@ set (SOURCES
     ${CMAKE_SOURCE_DIR}/src/game/recomp_actor_api.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_data_api.cpp
     ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/gc_adapter.cpp
 
     ${CMAKE_SOURCE_DIR}/src/ui/ui_renderer.cpp
     ${CMAKE_SOURCE_DIR}/src/ui/ui_state.cpp
@@ -306,6 +307,33 @@ if (WIN32)
     )
     FetchContent_MakeAvailable(sdl2)
 endif()
+
+# GameCube controller adapter support, which uses libusb to talk to the adapter.
+option(ZELDA64_GC_ADAPTER "Enable support for Nintendo's GameCube controller adapter (requires libusb)" ON)
+set(ZELDA64_GC_ADAPTER_ENABLED OFF)
+if (ZELDA64_GC_ADAPTER)
+    if (WIN32)
+        # Fetch the official libusb binaries on windows.
+        FetchContent_Declare(
+            libusb
+            URL https://github.com/libusb/libusb/releases/download/v1.0.27/libusb-1.0.27.7z
+            URL_HASH SHA256=19835e290f46fab6bd8ce4be6ab7dc5209f1c04bad177065df485e51dc4118c8
+        )
+        FetchContent_MakeAvailable(libusb)
+        set(ZELDA64_GC_ADAPTER_ENABLED ON)
+    else()
+        find_package(PkgConfig)
+        if (PKG_CONFIG_FOUND)
+            pkg_check_modules(LIBUSB IMPORTED_TARGET libusb-1.0)
+        endif()
+        if (LIBUSB_FOUND)
+            set(ZELDA64_GC_ADAPTER_ENABLED ON)
+        else()
+            message(WARNING "libusb-1.0 wasn't found, so GameCube controller adapter support will be disabled.")
+        endif()
+    endif()
+endif()
+message(STATUS "GameCube controller adapter support: ${ZELDA64_GC_ADAPTER_ENABLED}")
 
 # Configures an executable with everything that's shared between the games.
 function(zelda64_setup_executable TARGET)
@@ -369,6 +397,15 @@ function(zelda64_setup_executable TARGET)
                 "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxcompiler.dll"
                 $<TARGET_FILE_DIR:${TARGET}>)
 
+        if (ZELDA64_GC_ADAPTER_ENABLED)
+            target_include_directories(${TARGET} PRIVATE ${libusb_SOURCE_DIR}/include)
+            target_link_libraries(${TARGET} PRIVATE ${libusb_SOURCE_DIR}/VS2022/MS64/dll/libusb-1.0.lib)
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${libusb_SOURCE_DIR}/VS2022/MS64/dll/libusb-1.0.dll"
+                    $<TARGET_FILE_DIR:${TARGET}>)
+        endif()
+
         set_target_properties(
             ${TARGET}
             PROPERTIES
@@ -431,6 +468,13 @@ function(zelda64_setup_executable TARGET)
     )
 
     target_sources(${TARGET} PRIVATE ${SOURCES})
+
+    if (ZELDA64_GC_ADAPTER_ENABLED)
+        target_compile_definitions(${TARGET} PRIVATE ZELDA64_GC_ADAPTER=1)
+        if (NOT WIN32)
+            target_link_libraries(${TARGET} PRIVATE PkgConfig::LIBUSB)
+        endif()
+    endif()
 
     set_property(TARGET ${TARGET} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endfunction()

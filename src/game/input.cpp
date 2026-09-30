@@ -4,6 +4,7 @@
 #include "ultramodern/ultramodern.hpp"
 #include "recomp.h"
 #include "recomp_input.h"
+#include "gc_adapter.h"
 #include "zelda_config.h"
 #include "recomp_ui.h"
 #include "SDL.h"
@@ -302,6 +303,10 @@ void recomp::handle_events() {
     SDL_Event cur_event;
     static bool started = false;
     static bool exited = false;
+
+    // Add, remove and update GameCube adapter controllers before processing events so their changes are picked up.
+    recomp::gc_adapter::update();
+
     while (SDL_PollEvent(&cur_event) && !exited) {
         exited = sdl_event_filter(nullptr, &cur_event);
 
@@ -781,10 +786,11 @@ std::string controller_button_to_string(SDL_GameControllerButton button) {
         return PF_DPAD_RIGHT;
     // case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_MISC1:
     //     return "";
-    // case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_PADDLE1:
-    //     return "";
-    // case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_PADDLE2:
-    //     return "";
+    // Paddles 1 and 2 are also used for the clicks at the end of a GameCube controller's analog trigger travel.
+    case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_PADDLE1:
+        return "L Click";
+    case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_PADDLE2:
+        return "R Click";
     // case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_PADDLE3:
     //     return "";
     // case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_PADDLE4:

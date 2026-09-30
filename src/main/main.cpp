@@ -29,6 +29,7 @@
 
 #include "recomp_ui.h"
 #include "recomp_input.h"
+#include "gc_adapter.h"
 #include "zelda_config.h"
 #include "zelda_sound.h"
 #include "zelda_render.h"
@@ -750,6 +751,9 @@ int main(int argc, char** argv) {
     // Register the .rtz texture pack file format with the previous content type as its only allowed content type.
     recomp::mods::register_mod_container_type("rtz", std::vector{ texture_pack_content_type_id }, false);
 
+    // Connect to a GameCube controller adapter if one is plugged in.
+    recomp::gc_adapter::start();
+
     recomp::start(
         project_version,
         {},
@@ -762,6 +766,8 @@ int main(int argc, char** argv) {
         error_handling_callbacks,
         threads_callbacks
     );
+
+    recomp::gc_adapter::stop();
 
     NFD_Quit();
 
