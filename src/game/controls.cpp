@@ -1,7 +1,13 @@
 #include <array>
+#include <chrono>
+#include <cmath>
+#include <numbers>
+#include <deque>
+#include <mutex>
 
 #include "librecomp/helpers.hpp"
 #include "recomp_input.h"
+#include "zelda_config.h"
 #include "ultramodern/ultramodern.hpp"
 
 // Arrays that hold the mappings for every input for keyboard and controller respectively.
@@ -75,42 +81,126 @@ void recomp::set_input_binding(recomp::GameInput input, size_t binding_index, re
     }
 }
 
-bool recomp::get_n64_input(int controller_num, uint16_t* buttons_out, float* x_out, float* y_out) {
+// Snaps a stick position to the nearest cardinal or diagonal direction if it's within the configured angle of it,
+// like the notches of an N64 controller's gate. The distance from the center is preserved.
+static void apply_stick_snapping(float* x, float* y) {
+    int snap_degrees = zelda64::get_stick_snap_angle();
+    if (snap_degrees <= 0) {
+        return;
+    }
+
+    float magnitude = std::sqrt(*x * *x + *y * *y);
+    if (magnitude == 0.0f) {
+        return;
+    }
+
+    constexpr float notch_angle = std::numbers::pi_v<float> / 4.0f;
+    float angle = std::atan2(*y, *x);
+    float nearest_notch = std::round(angle / notch_angle) * notch_angle;
+
+    if (std::fabs(angle - nearest_notch) <= snap_degrees * std::numbers::pi_v<float> / 180.0f) {
+        float snapped_x = magnitude * std::cos(nearest_notch);
+        float snapped_y = magnitude * std::sin(nearest_notch);
+        // Remove floating point error so the other axis of a cardinal direction is exactly zero.
+        *x = std::fabs(snapped_x) < 1e-6f ? 0.0f : snapped_x;
+        *y = std::fabs(snapped_y) < 1e-6f ? 0.0f : snapped_y;
+    }
+}
+
+// Reads the current state of the N64 controller from the bound inputs.
+static void get_live_n64_input(uint16_t* buttons_out, float* x_out, float* y_out) {
     uint16_t cur_buttons = 0;
     float cur_x = 0.0f;
     float cur_y = 0.0f;
-    
-    if (controller_num != 0) {
-        return false;
-    }
 
     if (!recomp::game_input_disabled()) {
         for (size_t i = 0; i < n64_button_values.size(); i++) {
-            size_t input_index = (size_t)GameInput::N64_BUTTON_START + i;
+            size_t input_index = (size_t)recomp::GameInput::N64_BUTTON_START + i;
             cur_buttons |= recomp::get_input_digital(keyboard_input_mappings[input_index]) ? n64_button_values[i] : 0;
             cur_buttons |= recomp::get_input_digital(controller_input_mappings[input_index]) ? n64_button_values[i] : 0;
         }
 
         float joystick_deadzone = recomp::get_joystick_deadzone() / 100.0f;
 
-        float joystick_x = recomp::get_input_analog(controller_input_mappings[(size_t)GameInput::X_AXIS_POS])
-                        - recomp::get_input_analog(controller_input_mappings[(size_t)GameInput::X_AXIS_NEG]);
+        float joystick_x = recomp::get_input_analog(controller_input_mappings[(size_t)recomp::GameInput::X_AXIS_POS])
+                        - recomp::get_input_analog(controller_input_mappings[(size_t)recomp::GameInput::X_AXIS_NEG]);
 
-        float joystick_y = recomp::get_input_analog(controller_input_mappings[(size_t)GameInput::Y_AXIS_POS])
-                        - recomp::get_input_analog(controller_input_mappings[(size_t)GameInput::Y_AXIS_NEG]);
+        float joystick_y = recomp::get_input_analog(controller_input_mappings[(size_t)recomp::GameInput::Y_AXIS_POS])
+                        - recomp::get_input_analog(controller_input_mappings[(size_t)recomp::GameInput::Y_AXIS_NEG]);
 
         recomp::apply_joystick_deadzone(joystick_x, joystick_y, &joystick_x, &joystick_y);
+        apply_stick_snapping(&joystick_x, &joystick_y);
 
-        cur_x = recomp::get_input_analog(keyboard_input_mappings[(size_t)GameInput::X_AXIS_POS])
-                - recomp::get_input_analog(keyboard_input_mappings[(size_t)GameInput::X_AXIS_NEG]) + joystick_x;
+        cur_x = recomp::get_input_analog(keyboard_input_mappings[(size_t)recomp::GameInput::X_AXIS_POS])
+                - recomp::get_input_analog(keyboard_input_mappings[(size_t)recomp::GameInput::X_AXIS_NEG]) + joystick_x;
 
-        cur_y = recomp::get_input_analog(keyboard_input_mappings[(size_t)GameInput::Y_AXIS_POS])
-                - recomp::get_input_analog(keyboard_input_mappings[(size_t)GameInput::Y_AXIS_NEG]) + joystick_y;
+        cur_y = recomp::get_input_analog(keyboard_input_mappings[(size_t)recomp::GameInput::Y_AXIS_POS])
+                - recomp::get_input_analog(keyboard_input_mappings[(size_t)recomp::GameInput::Y_AXIS_NEG]) + joystick_y;
     }
 
     *buttons_out = cur_buttons;
     *x_out = std::clamp(cur_x, -1.0f, 1.0f);
     *y_out = std::clamp(cur_y, -1.0f, 1.0f);
+}
 
+// History of controller states used to apply the input lag option.
+struct N64InputSample {
+    std::chrono::steady_clock::time_point time;
+    uint16_t buttons;
+    float x;
+    float y;
+};
+
+static std::mutex input_history_mutex;
+static std::deque<N64InputSample> input_history;
+
+void recomp::record_input_sample() {
+    int lag_ms = zelda64::get_input_lag_ms();
+    if (lag_ms <= 0) {
+        std::lock_guard lock{ input_history_mutex };
+        input_history.clear();
+        return;
+    }
+
+    N64InputSample sample{ .time = std::chrono::steady_clock::now() };
+    get_live_n64_input(&sample.buttons, &sample.x, &sample.y);
+
+    std::lock_guard lock{ input_history_mutex };
+    input_history.push_back(sample);
+
+    // Drop samples that can no longer be requested, keeping the newest one from before the maximum lag.
+    auto cutoff = sample.time - std::chrono::milliseconds(zelda64::max_input_lag_ms);
+    while (input_history.size() > 1 && input_history[1].time <= cutoff) {
+        input_history.pop_front();
+    }
+}
+
+bool recomp::get_n64_input(int controller_num, uint16_t* buttons_out, float* x_out, float* y_out) {
+    if (controller_num != 0) {
+        return false;
+    }
+
+    // If input lag is enabled, return the controller state from the configured amount of time ago.
+    int lag_ms = zelda64::get_input_lag_ms();
+    if (lag_ms > 0) {
+        std::lock_guard lock{ input_history_mutex };
+        if (!input_history.empty()) {
+            auto target_time = std::chrono::steady_clock::now() - std::chrono::milliseconds(lag_ms);
+            // Use the oldest sample if the history doesn't go back far enough yet (e.g. the option was just enabled).
+            const N64InputSample* sample = &input_history.front();
+            for (auto it = input_history.rbegin(); it != input_history.rend(); ++it) {
+                if (it->time <= target_time) {
+                    sample = &*it;
+                    break;
+                }
+            }
+            *buttons_out = sample->buttons;
+            *x_out = sample->x;
+            *y_out = sample->y;
+            return true;
+        }
+    }
+
+    get_live_n64_input(buttons_out, x_out, y_out);
     return true;
 }

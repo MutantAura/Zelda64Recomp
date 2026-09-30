@@ -744,6 +744,23 @@ scrollbarhorizontal sliderbar {
   font-style: normal;
 }
 
+.config__wrapper--scroll {
+  overflow-y: auto;
+}
+
+.controls-stick-snap {
+  flex: 1 1 auto;
+  max-width: 520dp;
+  align-items: center;
+  margin-top: 0dp;
+  margin-left: 24dp;
+}
+
+.controls-stick-snap__label {
+  width: auto;
+  min-width: 180dp;
+}
+
 .config__hz-wrapper {
   display: flex;
   flex: 1 1 100%;

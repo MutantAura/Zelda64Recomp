@@ -19,6 +19,19 @@
                             <div class="toggle__icon toggle__icon--right"><div>␽</div></div>
                         </div>
                     </button>
+                    <!-- control stick snapping -->
+                    <div class="config-option__range-wrapper config-option__list controls-stick-snap">
+                        <label class="config-option__range-label controls-stick-snap__label">Stick Snap {{stick_snap_angle == 0 ? 'Off' : stick_snap_angle + '°'}}</label>
+                        <input
+                            class="nav-vert"
+                            id="stick_snap_input"
+                            type="range"
+                            min="0"
+                            max="22"
+                            style="flex: 1; margin: 0dp; nav-up: #tab_controls; nav-down: #input_row_button_0_0"
+                            data-value="stick_snap_angle"
+                        />
+                    </div>
                 </div>
                 <div>
                     <button

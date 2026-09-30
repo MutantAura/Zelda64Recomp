@@ -322,6 +322,11 @@ void recomp::handle_events() {
         started = true;
         recompui::process_game_started();
     }
+
+    // Record the controller state after processing events so the input lag option has an accurate history.
+    if (started) {
+        recomp::record_input_sample();
+    }
 }
 
 constexpr SDL_GameControllerButton SDL_CONTROLLER_BUTTON_SOUTH = SDL_CONTROLLER_BUTTON_A;

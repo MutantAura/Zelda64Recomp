@@ -241,6 +241,10 @@ struct ControlOptionsContext {
     zelda64::CameraInvertMode camera_invert_mode;
     zelda64::AnalogCamMode analog_cam_mode;
     zelda64::CameraInvertMode analog_camera_invert_mode;
+    int pause_lag_vis; // 0 to zelda64::max_pause_lag_vis
+    int unpause_lag_vis; // 0 to zelda64::max_pause_lag_vis
+    int input_lag_ms; // 0 to zelda64::max_input_lag_ms
+    int stick_snap_angle; // 0 to zelda64::max_stick_snap_angle
 };
 
 ControlOptionsContext control_options_context;
@@ -361,6 +365,50 @@ void zelda64::set_analog_camera_invert_mode(zelda64::CameraInvertMode mode) {
     }
 }
 
+int zelda64::get_pause_lag_vis() {
+    return control_options_context.pause_lag_vis;
+}
+
+void zelda64::set_pause_lag_vis(int vis) {
+    control_options_context.pause_lag_vis = std::clamp(vis, 0, zelda64::max_pause_lag_vis);
+    if (general_model_handle) {
+        general_model_handle.DirtyVariable("pause_lag_vis");
+    }
+}
+
+int zelda64::get_unpause_lag_vis() {
+    return control_options_context.unpause_lag_vis;
+}
+
+void zelda64::set_unpause_lag_vis(int vis) {
+    control_options_context.unpause_lag_vis = std::clamp(vis, 0, zelda64::max_pause_lag_vis);
+    if (general_model_handle) {
+        general_model_handle.DirtyVariable("unpause_lag_vis");
+    }
+}
+
+int zelda64::get_stick_snap_angle() {
+    return control_options_context.stick_snap_angle;
+}
+
+void zelda64::set_stick_snap_angle(int degrees) {
+    control_options_context.stick_snap_angle = std::clamp(degrees, 0, zelda64::max_stick_snap_angle);
+    if (controls_model_handle) {
+        controls_model_handle.DirtyVariable("stick_snap_angle");
+    }
+}
+
+int zelda64::get_input_lag_ms() {
+    return control_options_context.input_lag_ms;
+}
+
+void zelda64::set_input_lag_ms(int ms) {
+    control_options_context.input_lag_ms = std::clamp(ms, 0, zelda64::max_input_lag_ms);
+    if (general_model_handle) {
+        general_model_handle.DirtyVariable("input_lag_ms");
+    }
+}
+
 struct SoundOptionsContext {
     std::atomic<int> main_volume; // Option to control the volume of all sound
     std::atomic<int> bgm_volume;
@@ -454,7 +502,7 @@ struct DebugContext {
 
 DebugContext debug_context;
 
-// The debug menu's warp and time options are only implemented for MM.
+// Used to show options that are only implemented for one of the games.
 static bool game_is_mm = zelda64::is_mm();
 
 recompui::ContextId config_context;
@@ -720,6 +768,7 @@ public:
 
         constructor.BindFunc("input_count", [](Rml::Variant& out) { out = static_cast<uint64_t>(recomp::get_num_inputs()); } );
         constructor.BindFunc("input_device_is_keyboard", [](Rml::Variant& out) { out = cur_device == recomp::InputDevice::Keyboard; } );
+        constructor.Bind("stick_snap_angle", &control_options_context.stick_snap_angle);
 
         constructor.RegisterTransformFunc("get_input_name", [](const Rml::VariantList& inputs) {
             return Rml::Variant{recomp::get_input_name(static_cast<recomp::GameInput>(inputs.at(0).Get<size_t>()))};
@@ -921,6 +970,7 @@ public:
 
         bind_config_list_events(constructor);
         
+        constructor.Bind("game_is_mm", &game_is_mm);
         constructor.Bind("rumble_strength", &control_options_context.rumble_strength);
         constructor.Bind("gyro_sensitivity", &control_options_context.gyro_sensitivity);
         constructor.Bind("mouse_sensitivity", &control_options_context.mouse_sensitivity);
@@ -931,6 +981,9 @@ public:
         bind_option(constructor, "camera_invert_mode", &control_options_context.camera_invert_mode);
         bind_option(constructor, "analog_cam_mode", &control_options_context.analog_cam_mode);
         bind_option(constructor, "analog_camera_invert_mode", &control_options_context.analog_camera_invert_mode);
+        constructor.Bind("pause_lag_vis", &control_options_context.pause_lag_vis);
+        constructor.Bind("unpause_lag_vis", &control_options_context.unpause_lag_vis);
+        constructor.Bind("input_lag_ms", &control_options_context.input_lag_ms);
 
         general_model_handle = constructor.GetModelHandle();
     }
@@ -960,6 +1013,7 @@ public:
 
         // Bind the debug mode enabled flag.
         constructor.Bind("debug_enabled", &debug_context.debug_enabled);
+        // The debug menu's warp and time options are only implemented for MM.
         constructor.Bind("game_is_mm", &game_is_mm);
         
         // Register the array type for string vectors.

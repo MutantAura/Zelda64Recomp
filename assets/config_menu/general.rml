@@ -5,7 +5,7 @@
         <form class="config__form" id="conf-general__form">
             <div class="config__hz-wrapper" id="conf-general__hz-wrapper">
                 <!-- Options -->
-                <div class="config__wrapper" data-event-mouseout="set_cur_config_index(-1)" id="conf-general__wrapper">
+                <div class="config__wrapper config__wrapper--scroll" data-event-mouseout="set_cur_config_index(-1)" id="conf-general__wrapper">
                     <!-- targeting mode -->
                     <div class="config-option" data-event-mouseover="set_cur_config_index(0)" id="conf-general__Targeting-Mode">
                         <label class="config-option__title">Targeting Mode</label>
@@ -268,7 +268,7 @@
                                 data-checked="analog_camera_invert_mode"
                                 value="InvertNone"
                                 id="analog_camera_inversion_none"
-                                style="nav-up: #analog_cam_enabled;"
+                                style="nav-up: #analog_cam_enabled; nav-down: #input_lag_input"
                             />
                             <label class="config-option__tab-label" for="analog_camera_inversion_none">None</label>
 
@@ -280,7 +280,7 @@
                                 data-checked="analog_camera_invert_mode"
                                 value="InvertX"
                                 id="analog_camera_inversion_x"
-                                style="nav-up: #analog_cam_disabled;"
+                                style="nav-up: #analog_cam_disabled; nav-down: #input_lag_input"
                             />
                             <label class="config-option__tab-label" for="analog_camera_inversion_x">Invert X</label>
 
@@ -292,7 +292,7 @@
                                 data-checked="analog_camera_invert_mode"
                                 value="InvertY"
                                 id="analog_camera_inversion_y"
-                                style="nav-up: #analog_cam_disabled;"
+                                style="nav-up: #analog_cam_disabled; nav-down: #input_lag_input"
                             />
                             <label class="config-option__tab-label" for="analog_camera_inversion_y">Invert Y</label>
 
@@ -304,9 +304,66 @@
                                 data-checked="analog_camera_invert_mode"
                                 value="InvertBoth"
                                 id="analog_camera_inversion_both"
-                                style="nav-up: #analog_cam_disabled;"
+                                style="nav-up: #analog_cam_disabled; nav-down: #input_lag_input"
                             />
                             <label class="config-option__tab-label" for="analog_camera_inversion_both">Invert Both</label>
+                        </div>
+                    </div>
+
+                    <!-- input lag -->
+                    <div class="config-option" data-event-mouseover="set_cur_config_index(10)">
+                        <label class="config-option__title">Input Lag</label>
+                        <div class="config-option__range-wrapper config-option__list">
+                            <label class="config-option__range-label">{{input_lag_ms}} ms</label>
+                            <input
+                                class="nav-vert"
+                                data-event-blur="set_cur_config_index(-1)"
+                                data-event-focus="set_cur_config_index(10)"
+                                id="input_lag_input"
+                                type="range"
+                                min="0"
+                                max="200"
+                                style="flex: 1; margin: 0dp; nav-up: #analog_camera_inversion_none;"
+                                data-value="input_lag_ms"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- pause lag -->
+                    <div class="config-option" data-if="!game_is_mm" data-event-mouseover="set_cur_config_index(11)">
+                        <label class="config-option__title">Pause Lag</label>
+                        <div class="config-option__range-wrapper config-option__list">
+                            <label class="config-option__range-label">{{pause_lag_vis}} VI ({{pause_lag_vis * 50 / 3 | format(0)}} ms)</label>
+                            <input
+                                class="nav-vert"
+                                data-event-blur="set_cur_config_index(-1)"
+                                data-event-focus="set_cur_config_index(11)"
+                                id="pause_lag_input"
+                                type="range"
+                                min="0"
+                                max="30"
+                                style="flex: 1; margin: 0dp;"
+                                data-value="pause_lag_vis"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- unpause lag -->
+                    <div class="config-option" data-if="!game_is_mm" data-event-mouseover="set_cur_config_index(12)">
+                        <label class="config-option__title">Unpause Lag</label>
+                        <div class="config-option__range-wrapper config-option__list">
+                            <label class="config-option__range-label">{{unpause_lag_vis}} VI ({{unpause_lag_vis * 50 / 3 | format(0)}} ms)</label>
+                            <input
+                                class="nav-vert"
+                                data-event-blur="set_cur_config_index(-1)"
+                                data-event-focus="set_cur_config_index(12)"
+                                id="unpause_lag_input"
+                                type="range"
+                                min="0"
+                                max="30"
+                                style="flex: 1; margin: 0dp;"
+                                data-value="unpause_lag_vis"
+                            />
                         </div>
                     </div>
                 </div>
@@ -361,6 +418,24 @@
                     </p>
                     <p data-if="cur_config_index == 9">
                         Inverts the camera controls for the analog camera if it's enabled. <b>None</b> is the default.
+                    </p>
+                    <p data-if="cur_config_index == 10">
+                        Delays controller and keyboard input by the chosen amount of time, which can be used to match the input lag of playing on console.
+                        <br/>
+                        <br/>
+                        <b>Setting this to zero will disable the delay.</b> Camera, gyro and mouse aiming inputs are not delayed.
+                    </p>
+                    <p data-if="cur_config_index == 11">
+                        Adds lag when the pause menu opens to match console, measured in VIs (1/60th of a second). Inputs made during the lag are read on the next frame, like on console.
+                        <br/>
+                        <br/>
+                        <b>Setting this to zero will disable the lag.</b>
+                    </p>
+                    <p data-if="cur_config_index == 12">
+                        Adds lag when the pause menu closes and gameplay resumes to match console, measured in VIs (1/60th of a second). This allows pause buffering: inputs held or pressed during the lag are read on the first frame of gameplay, and pressing Start during the lag advances a single frame before pausing again.
+                        <br/>
+                        <br/>
+                        <b>Setting this to zero will disable the lag.</b>
                     </p>
                 </div>
             </div>

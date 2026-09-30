@@ -161,6 +161,8 @@ namespace recomp {
     void set_input_binding(GameInput input, size_t binding_index, InputDevice device, InputField value);
 
     bool get_n64_input(int controller_num, uint16_t* buttons_out, float* x_out, float* y_out);
+    // Records the current controller state for the input lag option. Called regularly by the event handling thread.
+    void record_input_sample();
     void set_rumble(int controller_num, bool);
     void update_rumble();
     void handle_events();

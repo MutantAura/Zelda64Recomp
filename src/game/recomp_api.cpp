@@ -142,6 +142,14 @@ extern "C" void recomp_get_analog_inverted_axes(uint8_t* rdram, recomp_context* 
     *y_out = (mode == zelda64::CameraInvertMode::InvertY || mode == zelda64::CameraInvertMode::InvertBoth);
 }
 
+extern "C" void recomp_get_pause_lag_vis(uint8_t* rdram, recomp_context* ctx) {
+    _return<s32>(ctx, zelda64::get_pause_lag_vis());
+}
+
+extern "C" void recomp_get_unpause_lag_vis(uint8_t* rdram, recomp_context* ctx) {
+    _return<s32>(ctx, zelda64::get_unpause_lag_vis());
+}
+
 extern "C" void recomp_get_analog_cam_enabled(uint8_t* rdram, recomp_context* ctx) {
     _return<s32>(ctx, zelda64::get_analog_cam_mode() == zelda64::AnalogCamMode::On);
 }

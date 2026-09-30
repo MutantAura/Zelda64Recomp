@@ -241,6 +241,10 @@ bool save_general_config(const std::filesystem::path& path) {
     config_json["camera_invert_mode"] = zelda64::get_camera_invert_mode();
     config_json["analog_cam_mode"] = zelda64::get_analog_cam_mode();
     config_json["analog_camera_invert_mode"] = zelda64::get_analog_camera_invert_mode();
+    config_json["pause_lag_vis"] = zelda64::get_pause_lag_vis();
+    config_json["unpause_lag_vis"] = zelda64::get_unpause_lag_vis();
+    config_json["input_lag_ms"] = zelda64::get_input_lag_ms();
+    config_json["stick_snap_angle"] = zelda64::get_stick_snap_angle();
     config_json["debug_mode"] = zelda64::get_debug_mode_enabled();
 
     return save_json_with_backups(path, config_json);
@@ -257,6 +261,10 @@ void set_general_settings_from_json(const nlohmann::json& config_json) {
     zelda64::set_camera_invert_mode(from_or_default(config_json, "camera_invert_mode", zelda64::CameraInvertMode::InvertY));
     zelda64::set_analog_cam_mode(from_or_default(config_json, "analog_cam_mode", zelda64::AnalogCamMode::Off));
     zelda64::set_analog_camera_invert_mode(from_or_default(config_json, "analog_camera_invert_mode", zelda64::CameraInvertMode::InvertNone));
+    zelda64::set_pause_lag_vis(from_or_default(config_json, "pause_lag_vis", 0));
+    zelda64::set_unpause_lag_vis(from_or_default(config_json, "unpause_lag_vis", 0));
+    zelda64::set_input_lag_ms(from_or_default(config_json, "input_lag_ms", 0));
+    zelda64::set_stick_snap_angle(from_or_default(config_json, "stick_snap_angle", 0));
     zelda64::set_debug_mode_enabled(from_or_default(config_json, "debug_mode", false));
 }
 

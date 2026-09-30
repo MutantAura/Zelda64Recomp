@@ -54,6 +54,25 @@
     }
 }
 
+// Options column that scrolls when it has more options than fit on screen.
+.config__wrapper--scroll {
+    overflow-y: auto;
+}
+
+// Control stick snapping slider in the controls menu header.
+.controls-stick-snap {
+    flex: 1 1 auto;
+    max-width: 520dp;
+    align-items: center;
+    margin-top: 0dp;
+    margin-left: space(24);
+}
+
+.controls-stick-snap__label {
+    width: auto;
+    min-width: 180dp;
+}
+
 .config__hz-wrapper {
     display: flex;
     flex: 1 1 100%;

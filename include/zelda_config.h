@@ -92,6 +92,23 @@ namespace zelda64 {
     AnalogCamMode get_analog_cam_mode();
     void set_analog_cam_mode(AnalogCamMode mode);
 
+    // Emulated console lag when opening and closing the pause menu, in VIs (1/60th of a second).
+    constexpr int max_pause_lag_vis = 30;
+    int get_pause_lag_vis();
+    void set_pause_lag_vis(int vis);
+    int get_unpause_lag_vis();
+    void set_unpause_lag_vis(int vis);
+
+    // Snaps the control stick to the nearest cardinal or diagonal when within this many degrees of it.
+    constexpr int max_stick_snap_angle = 22;
+    int get_stick_snap_angle();
+    void set_stick_snap_angle(int degrees);
+
+    // Artificial delay applied to controller input, in milliseconds.
+    constexpr int max_input_lag_ms = 200;
+    int get_input_lag_ms();
+    void set_input_lag_ms(int ms);
+
     void open_quit_game_prompt();
 };
 
