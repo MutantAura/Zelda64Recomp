@@ -105,5 +105,7 @@ cmake --build build-cmake --target Ocarina64Recompiled -j$(nproc) --config Relea
 
 The patches in `oot/patches` are built with the same MIPS-capable `clang` and `ld.lld` as Majora's Mask's patches (`PATCHES_C_COMPILER` and `PATCHES_LD`).
 
+`oot/patches/camera_mode_patches.c` is generated from the decompilation's camera code. After updating the `lib/oot-decomp` submodule, regenerate it from the repository root with `python oot/tools/gen_camera_patches.py lib/oot-decomp oot/patches/camera_mode_patches.c`.
+
 > [!IMPORTANT]
 > As with Majora's Mask, you should select the standard (compressed) ROM in the game itself, not the decompressed one.
