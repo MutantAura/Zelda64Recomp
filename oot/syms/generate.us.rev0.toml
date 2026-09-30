@@ -1,0 +1,27 @@
+# Config used to generate the OoT symbol files in this folder from the decompilation's ELF.
+#
+# Build the decomp (https://github.com/zeldaret/oot) for VERSION=ntsc-1.0 REGION=US, then copy
+# build/ntsc-1.0/oot-ntsc-1.0.elf next to this file and run the following from this folder:
+#   N64Recomp generate.us.rev0.toml --dump-context
+# Then rename dump.toml to oot.us.rev0.syms.toml and data_dump.toml to oot.us.rev0.datasyms.toml, and run:
+#   python fixup_syms.py oot.us.rev0.syms.toml oot.us.rev0.datasyms.toml
+#
+# ../overlays.us.rev0.txt lists every "..ovl_*" section of the ELF (in section header order), except for
+# ..ovl_map_mark_data. That overlay only contains data and is relocated manually by the game, and the recompiler
+# can't write an overlay table entry for a relocatable section without any functions.
+
+[input]
+entrypoint = 0x80000400
+output_func_path = "RecompiledFuncsDump"
+relocatable_sections_path = "../overlays.us.rev0.txt"
+elf_path = "oot-ntsc-1.0.elf"
+
+# Handwritten asm functions whose symbol sizes include trailing data.
+function_sizes = [
+    # Followed by the low_codepoints_lookup_table data.
+    { name = "KanjiTex_CodepointToOffset", size = 0x98 },
+    # Followed by the kantbl data.
+    { name = "LeoGetKAdr", size = 0xB8 },
+    # Followed by the asc2tbl data.
+    { name = "LeoGetAAdr", size = 0x70 },
+]

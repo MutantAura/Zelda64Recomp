@@ -1,0 +1,33 @@
+# Config file for Ocarina of Time NTSC 1.0 (US) Recompilation.
+
+[input]
+entrypoint = 0x80000400
+# Paths are relative to the location of this config file.
+output_func_path = "RecompiledFuncs"
+relocatable_sections_path = "overlays.us.rev0.txt"
+symbols_file_path = "syms/oot.us.rev0.syms.toml"
+rom_file_path = "../oot.us.rev0.rom_uncompressed.z64"
+
+[patches]
+stubs = [
+    # Stub out unused functions that directly manipulate RCP status.
+    "RcpUtils_PrintRegisterStatus",
+    "RcpUtils_Reset",
+    # Stub out the CIC-6105 anti-piracy checks. These read kseg1 addresses and submit an RSP task
+    # with a custom microcode that the runtime doesn't implement, and their results are unused.
+    "CIC6105_SaveBootMagicValues",
+    "CIC6105_RunBootTask",
+    # Stub out 64DD drive ROM initialization, which is called at boot and directly manipulates PI registers.
+    "osDriveRomInit",
+    # 64DD function (in the n64dd segment, which is never loaded) containing a `lw $zero` that the recompiler
+    # emits as an invalid assignment.
+    "func_801C7268",
+]
+
+# Single-instruction patches
+
+# Disable RCP timeout detection (sometimes throws false positives, not needed)
+[[patches.instruction]]
+func = "Graph_TaskSet00"
+vram = 0x800A13F0
+value = 0x00000000 # jal osSetTimer -> nop
