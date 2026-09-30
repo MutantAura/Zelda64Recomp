@@ -20,3 +20,6 @@
 	path = Zelda64RecompSyms
 	url = https://github.com/Zelda64Recomp/Zelda64RecompSyms
 
+[submodule "lib/oot-decomp"]
+	path = lib/oot-decomp
+	url = https://github.com/zeldaret/oot.git
