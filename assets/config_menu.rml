@@ -71,7 +71,7 @@
 						<panel class="config">
 							<template src="config-menu__mods" />
 						</panel>
-						<tab class="tab" data-model="debug_model" data-if="debug_enabled" id="tab_debug">
+						<tab class="tab" data-model="debug_model" data-if="debug_enabled && game_is_mm" id="tab_debug">
 							<div>Debug</div>
 							<div class="tab__indicator"></div>
 						</tab>

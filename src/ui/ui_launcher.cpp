@@ -1,6 +1,7 @@
 #include "recomp_ui.h"
 #include "zelda_config.h"
 #include "zelda_support.h"
+#include "zelda_game.h"
 #include "librecomp/game.hpp"
 #include "ultramodern/ultramodern.hpp"
 #include "RmlUi/Core.h"
@@ -8,6 +9,8 @@
 #include <filesystem>
 
 static std::string version_string;
+static std::string game_name = zelda64::is_oot() ? "Ocarina of Time" : "Majora's Mask";
+static bool game_is_mm = zelda64::is_mm();
 
 Rml::DataModelHandle model_handle;
 bool mm_rom_valid = false;
@@ -114,6 +117,8 @@ public:
         Rml::DataModelConstructor constructor = context->CreateDataModel("launcher_model");
 
         constructor.Bind("mm_rom_valid", &mm_rom_valid);
+        constructor.Bind("game_name", &game_name);
+        constructor.Bind("game_is_mm", &game_is_mm);
 
         version_string = recomp::get_project_version().to_string();
         constructor.Bind("version_number", &version_string);

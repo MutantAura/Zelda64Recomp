@@ -45,7 +45,9 @@
 #include "../../patches/sound.h"
 #include "../../patches/misc_funcs.h"
 
+#ifndef ZELDA64_GAME_OOT
 #include "mods/mm_recomp_dpad_builtin.h"
+#endif
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -144,7 +146,7 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
     flags |= SDL_WINDOW_VULKAN;
 #endif
 
-    window = SDL_CreateWindow("Zelda 64: Recompiled", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 960,  flags);
+    window = SDL_CreateWindow(zelda64::window_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 960,  flags);
 #if defined(__linux__)
     SetImageAsIcon("icons/512.png",window);
     if (ultramodern::renderer::get_graphics_config().wm_option == ultramodern::renderer::WindowMode::Fullscreen) { // TODO: Remove once RT64 gets native fullscreen support on Linux
@@ -349,6 +351,20 @@ gpr get_entrypoint_address();
 
 // array of supported GameEntry objects
 std::vector<recomp::GameEntry> supported_games = {
+#ifdef ZELDA64_GAME_OOT
+    {
+        .rom_hash = 0x9C427099CC30D135ULL,
+        .internal_name = "THE LEGEND OF ZELDA",
+        .game_id = u8"oot.n64.us.1.0",
+        .mod_game_id = "oot",
+        .save_type = recomp::SaveType::Sram,
+        .is_enabled = false,
+        .decompression_routine = zelda64::decompress_oot,
+        .has_compressed_code = true,
+        .entrypoint_address = get_entrypoint_address(),
+        .entrypoint = recomp_entrypoint,
+    },
+#else
     {
         .rom_hash = 0xEF18B4A9E2386169ULL,
         .internal_name = "ZELDA MAJORA'S MASK",
@@ -361,6 +377,7 @@ std::vector<recomp::GameEntry> supported_games = {
         .entrypoint_address = get_entrypoint_address(),
         .entrypoint = recomp_entrypoint,
     },
+#endif
 };
 
 // TODO: move somewhere else
@@ -655,7 +672,9 @@ int main(int argc, char** argv) {
         recomp::register_game(game);
     }
 
+#ifndef ZELDA64_GAME_OOT
     recomp::mods::register_embedded_mod("mm_recomp_dpad_builtin", { (const uint8_t*)(mm_recomp_dpad_builtin), std::size(mm_recomp_dpad_builtin)});
+#endif
 
     REGISTER_FUNC(recomp_get_window_resolution);
     REGISTER_FUNC(recomp_get_target_aspect_ratio);

@@ -2,6 +2,7 @@
 #include "recomp_input.h"
 #include "zelda_sound.h"
 #include "zelda_config.h"
+#include "zelda_game.h"
 #include "zelda_debug.h"
 #include "zelda_render.h"
 #include "zelda_support.h"
@@ -438,6 +439,11 @@ struct DebugContext {
 
     void update_warp_names() {
         scene_names.clear();
+        entrance_names.clear();
+        if (zelda64::game_warps.empty()) {
+            return;
+        }
+
         for (const auto& scene : zelda64::game_warps[area_index].scenes) {
             scene_names.emplace_back(scene.name);
         }
@@ -447,6 +453,9 @@ struct DebugContext {
 };
 
 DebugContext debug_context;
+
+// The debug menu's warp and time options are only implemented for MM.
+static bool game_is_mm = zelda64::is_mm();
 
 recompui::ContextId config_context;
 
@@ -951,6 +960,7 @@ public:
 
         // Bind the debug mode enabled flag.
         constructor.Bind("debug_enabled", &debug_context.debug_enabled);
+        constructor.Bind("game_is_mm", &game_is_mm);
         
         // Register the array type for string vectors.
         constructor.RegisterArray<std::vector<std::string>>();

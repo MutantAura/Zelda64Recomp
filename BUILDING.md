@@ -75,3 +75,35 @@ Voilà! You should now have a `Zelda64Recompiled` executable in the build direct
 
 > [!IMPORTANT]
 > In the game itself, you should be using a standard ROM, not the decompressed one.
+
+## Building Ocarina of Time
+
+Ocarina of Time (NTSC-U 1.0) is built as a separate executable, `Ocarina64Recompiled`, which shares the launcher, menus, input, graphics and audio code with Majora's Mask. Its recompilation config, symbols and patches live in the `oot` folder.
+
+### 1. Decompressing the ROM
+You will need to decompress the NTSC-U 1.0 N64 Ocarina of Time ROM (md5: 5bd1fe107bf8106b2ab6650abecd54d6). The [OoT decompilation project](https://github.com/zeldaret/oot)'s `tools/decompress_baserom.py` can do this (`make setup VERSION=ntsc-1.0 REGION=US` produces `baseroms/ntsc-1.0/baserom-decompressed.z64`). The decompressed ROM should have the md5 `6829a16db1a34e8ce989847cd8da8d9a`.
+
+Copy the decompressed ROM to the root of the repository with this filename:
+- `oot.us.rev0.rom_uncompressed.z64`
+
+### 2. Generating the C code
+Build `N64Recomp` and `RSPRecomp` as described above, then run the following from the `oot` folder:
+```bash
+../N64Recomp us.rev0.toml
+../RSPRecomp aspMain.us.rev0.toml
+../RSPRecomp njpgdspMain.us.rev0.toml
+```
+
+The symbol files in `oot/syms` are generated from the decompilation's ELF. See `oot/syms/generate.us.rev0.toml` for how to regenerate them.
+
+### 3. Building
+Once `oot/RecompiledFuncs` has been generated, CMake enables the `Ocarina64Recompiled` target (controlled by the `ZELDA64_BUILD_OOT` option). The `Zelda64Recompiled` (Majora's Mask) target is controlled by `ZELDA64_BUILD_MM`, which is off by default if only Ocarina of Time's code has been generated.
+
+```bash
+cmake --build build-cmake --target Ocarina64Recompiled -j$(nproc) --config Release
+```
+
+The patches in `oot/patches` are built with the same MIPS-capable `clang` and `ld.lld` as Majora's Mask's patches (`PATCHES_C_COMPILER` and `PATCHES_LD`).
+
+> [!IMPORTANT]
+> As with Majora's Mask, you should select the standard (compressed) ROM in the game itself, not the decompressed one.

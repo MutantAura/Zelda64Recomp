@@ -9,6 +9,14 @@
       "name": "Zelda64Recompiled.exe",
       "currentDir": "${workspaceRoot}",
       "args": ["--show-console"]
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "Ocarina64Recompiled.exe",
+      "name": "Ocarina64Recompiled.exe",
+      "currentDir": "${workspaceRoot}",
+      "args": ["--show-console"]
     }
   ]
 }

@@ -65,51 +65,25 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime)
 
 target_include_directories(rt64 PRIVATE ${CMAKE_BINARY_DIR}/rt64/src)
 
-# RecompiledFuncs - Library containing the primary recompiler output
-add_library(RecompiledFuncs STATIC)
+# Each game is built as its own executable, as the recompiled code of both games shares many symbol names.
+# MM is enabled by default unless only OoT's code has been generated, and OoT is enabled by default once its code has been generated.
+if (EXISTS ${CMAKE_SOURCE_DIR}/RecompiledFuncs/lookup.cpp OR NOT EXISTS ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs/lookup.cpp)
+    set(ZELDA64_BUILD_MM_DEFAULT ON)
+else()
+    set(ZELDA64_BUILD_MM_DEFAULT OFF)
+endif()
 
-target_compile_options(RecompiledFuncs PRIVATE
-    # -Wno-unused-but-set-variable
-    -fno-strict-aliasing
-    -Wno-unused-variable
-    -Wno-implicit-function-declaration
-)
+if (EXISTS ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs/lookup.cpp)
+    set(ZELDA64_BUILD_OOT_DEFAULT ON)
+else()
+    set(ZELDA64_BUILD_OOT_DEFAULT OFF)
+endif()
 
-target_include_directories(RecompiledFuncs PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/ultramodern/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/librecomp/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
-)
+option(ZELDA64_BUILD_MM "Build the Majora's Mask executable (Zelda64Recompiled)" ${ZELDA64_BUILD_MM_DEFAULT})
+option(ZELDA64_BUILD_OOT "Build the Ocarina of Time executable (Ocarina64Recompiled)" ${ZELDA64_BUILD_OOT_DEFAULT})
 
-file(GLOB FUNC_C_SOURCES ${CMAKE_SOURCE_DIR}/RecompiledFuncs/*.c)
-file(GLOB FUNC_CXX_SOURCES ${CMAKE_SOURCE_DIR}/RecompiledFuncs/*.cpp)
-
-target_sources(RecompiledFuncs PRIVATE ${FUNC_C_SOURCES} ${FUNC_CXX_SOURCES})
-
-# PatchesLib - Library containing the recompiled output for any custom function patches
-add_library(PatchesLib STATIC)
-
-target_compile_options(PatchesLib PRIVATE
-    # -Wno-unused-but-set-variable
-    -fno-strict-aliasing
-    -Wno-unused-variable
-    -Wno-implicit-function-declaration
-)
-
-target_include_directories(PatchesLib PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/ultramodern/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/librecomp/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
-)
-
-target_sources(PatchesLib PRIVATE
-    ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c
-    ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c
-)
-
-set_source_files_properties(${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c PROPERTIES COMPILE_FLAGS -fno-strict-aliasing)
+message(STATUS "Majora's Mask executable: ${ZELDA64_BUILD_MM}")
+message(STATUS "Ocarina of Time executable: ${ZELDA64_BUILD_OOT}")
 
 # Build patches elf
 if(NOT DEFINED PATCHES_C_COMPILER)
@@ -120,33 +94,146 @@ if(NOT DEFINED PATCHES_LD)
     set(PATCHES_LD ld.lld)
 endif()
 
-add_custom_target(PatchesBin
-    COMMAND ${CMAKE_COMMAND} -E env CC=${PATCHES_C_COMPILER} LD=${PATCHES_LD} make
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/patches
-    BYPRODUCTS ${CMAKE_SOURCE_DIR}/patches/patches.elf
-)
+if (ZELDA64_BUILD_MM)
+    # RecompiledFuncs - Library containing the primary recompiler output
+    add_library(RecompiledFuncs STATIC)
 
-# Generate patches_bin.c from patches.bin
-add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c
-    COMMAND file_to_c ${CMAKE_SOURCE_DIR}/patches/patches.bin mm_patches_bin ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.h
-    DEPENDS ${CMAKE_SOURCE_DIR}/patches/patches.bin
-)
+    target_compile_options(RecompiledFuncs PRIVATE
+        # -Wno-unused-but-set-variable
+        -fno-strict-aliasing
+        -Wno-unused-variable
+        -Wno-implicit-function-declaration
+    )
 
-# Recompile patches elf into patches.c and patches.bin
-add_custom_command(OUTPUT
-                       ${CMAKE_SOURCE_DIR}/patches/patches.bin
-                       ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c
-                       ${CMAKE_SOURCE_DIR}/RecompiledPatches/recomp_overlays.inl
-                       ${CMAKE_SOURCE_DIR}/RecompiledPatches/funcs.h
-                   # TODO: Look into why modifying patches requires two builds to take
-                   COMMAND ./N64Recomp patches.toml
-                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                   DEPENDS ${CMAKE_SOURCE_DIR}/patches/patches.elf
-)
+    target_include_directories(RecompiledFuncs PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/ultramodern/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/librecomp/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
+    )
 
-# Main executable
-add_executable(Zelda64Recompiled)
+    file(GLOB FUNC_C_SOURCES ${CMAKE_SOURCE_DIR}/RecompiledFuncs/*.c)
+    file(GLOB FUNC_CXX_SOURCES ${CMAKE_SOURCE_DIR}/RecompiledFuncs/*.cpp)
 
+    target_sources(RecompiledFuncs PRIVATE ${FUNC_C_SOURCES} ${FUNC_CXX_SOURCES})
+
+    # PatchesLib - Library containing the recompiled output for any custom function patches
+    add_library(PatchesLib STATIC)
+
+    target_compile_options(PatchesLib PRIVATE
+        # -Wno-unused-but-set-variable
+        -fno-strict-aliasing
+        -Wno-unused-variable
+        -Wno-implicit-function-declaration
+    )
+
+    target_include_directories(PatchesLib PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/ultramodern/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/librecomp/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
+    )
+
+    target_sources(PatchesLib PRIVATE
+        ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c
+        ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c
+    )
+
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c PROPERTIES COMPILE_FLAGS -fno-strict-aliasing)
+
+    add_custom_target(PatchesBin
+        COMMAND ${CMAKE_COMMAND} -E env CC=${PATCHES_C_COMPILER} LD=${PATCHES_LD} make
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/patches
+        BYPRODUCTS ${CMAKE_SOURCE_DIR}/patches/patches.elf
+    )
+
+    # Generate patches_bin.c from patches.bin
+    add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c
+        COMMAND file_to_c ${CMAKE_SOURCE_DIR}/patches/patches.bin mm_patches_bin ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.h
+        DEPENDS ${CMAKE_SOURCE_DIR}/patches/patches.bin
+    )
+
+    # Recompile patches elf into patches.c and patches.bin
+    add_custom_command(OUTPUT
+                           ${CMAKE_SOURCE_DIR}/patches/patches.bin
+                           ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c
+                           ${CMAKE_SOURCE_DIR}/RecompiledPatches/recomp_overlays.inl
+                           ${CMAKE_SOURCE_DIR}/RecompiledPatches/funcs.h
+                       # TODO: Look into why modifying patches requires two builds to take
+                       COMMAND ./N64Recomp patches.toml
+                       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                       DEPENDS ${CMAKE_SOURCE_DIR}/patches/patches.elf
+    )
+endif()
+
+if (ZELDA64_BUILD_OOT)
+    # RecompiledFuncsOoT - Library containing the primary recompiler output for OoT
+    add_library(RecompiledFuncsOoT STATIC)
+
+    target_compile_options(RecompiledFuncsOoT PRIVATE
+        -fno-strict-aliasing
+        -Wno-unused-variable
+        -Wno-implicit-function-declaration
+    )
+
+    target_include_directories(RecompiledFuncsOoT PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/ultramodern/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/librecomp/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
+    )
+
+    file(GLOB OOT_FUNC_C_SOURCES ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs/*.c)
+    file(GLOB OOT_FUNC_CXX_SOURCES ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs/*.cpp)
+
+    target_sources(RecompiledFuncsOoT PRIVATE ${OOT_FUNC_C_SOURCES} ${OOT_FUNC_CXX_SOURCES})
+
+    # PatchesLibOoT - Library containing the recompiled output for OoT's function patches
+    add_library(PatchesLibOoT STATIC)
+
+    target_compile_options(PatchesLibOoT PRIVATE
+        -fno-strict-aliasing
+        -Wno-unused-variable
+        -Wno-implicit-function-declaration
+    )
+
+    target_include_directories(PatchesLibOoT PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/ultramodern/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/librecomp/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
+    )
+
+    target_sources(PatchesLibOoT PRIVATE
+        ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/patches.c
+        ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/patches_bin.c
+    )
+
+    add_custom_target(PatchesBinOoT
+        COMMAND ${CMAKE_COMMAND} -E env CC=${PATCHES_C_COMPILER} LD=${PATCHES_LD} make
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/oot/patches
+        BYPRODUCTS ${CMAKE_SOURCE_DIR}/oot/patches/patches.elf
+    )
+
+    # Generate patches_bin.c from patches.bin
+    add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/patches_bin.c
+        COMMAND file_to_c ${CMAKE_SOURCE_DIR}/oot/patches/patches.bin oot_patches_bin ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/patches_bin.c ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/patches_bin.h
+        DEPENDS ${CMAKE_SOURCE_DIR}/oot/patches/patches.bin
+    )
+
+    # Recompile patches elf into patches.c and patches.bin
+    add_custom_command(OUTPUT
+                           ${CMAKE_SOURCE_DIR}/oot/patches/patches.bin
+                           ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/patches.c
+                           ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/recomp_overlays.inl
+                           ${CMAKE_SOURCE_DIR}/oot/RecompiledPatches/funcs.h
+                       COMMAND ./N64Recomp oot/patches.toml
+                       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                       DEPENDS ${CMAKE_SOURCE_DIR}/oot/patches/patches.elf
+    )
+endif()
+
+# Sources shared by every game's executable.
 set (SOURCES
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
     ${CMAKE_SOURCE_DIR}/src/main/support.cpp
@@ -157,7 +244,6 @@ set (SOURCES
     ${CMAKE_SOURCE_DIR}/src/game/input.cpp
     ${CMAKE_SOURCE_DIR}/src/game/controls.cpp
     ${CMAKE_SOURCE_DIR}/src/game/config.cpp
-    ${CMAKE_SOURCE_DIR}/src/game/scene_table.cpp
     ${CMAKE_SOURCE_DIR}/src/game/debug.cpp
     ${CMAKE_SOURCE_DIR}/src/game/quicksaving.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_api.cpp
@@ -197,58 +283,11 @@ set (SOURCES
     ${CMAKE_SOURCE_DIR}/src/ui/elements/ui_text_input.cpp
     ${CMAKE_SOURCE_DIR}/src/ui/elements/ui_toggle.cpp
 
-    ${CMAKE_SOURCE_DIR}/rsp/aspMain.cpp
-    ${CMAKE_SOURCE_DIR}/rsp/njpgdspMain.cpp
-
     ${CMAKE_SOURCE_DIR}/lib/RmlUi/Backends/RmlUi_Platform_SDL.cpp
 )
 
 if (APPLE)
     list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/src/main/support_apple.mm)
-endif()
-
-target_include_directories(Zelda64Recompiled PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
-    ${CMAKE_SOURCE_DIR}/lib/concurrentqueue
-    ${CMAKE_SOURCE_DIR}/lib/GamepadMotionHelpers
-    ${CMAKE_SOURCE_DIR}/lib/RmlUi/Include
-    ${CMAKE_SOURCE_DIR}/lib/RmlUi/Backends
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/hlslpp/include
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/inc
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src/rhi
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src/render
-    ${CMAKE_SOURCE_DIR}/lib/freetype-windows-binaries/include
-    ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/nativefiledialog-extended/src/include
-    ${CMAKE_SOURCE_DIR}/lib/SlotMap
-    ${CMAKE_BINARY_DIR}/shaders
-    ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
-    target_compile_options(Zelda64Recompiled PRIVATE
-        -march=nehalem
-        -fno-strict-aliasing
-        -fms-extensions
-    )
-else()
-    target_compile_options(Zelda64Recompiled PRIVATE
-        -fno-strict-aliasing
-        -fms-extensions
-    )
-endif()
-
-if (MSVC)
-    # Disable identical code folding, since this breaks mod function patching as multiple functions can get merged into one.
-    target_link_options(Zelda64Recompiled PRIVATE /OPT:NOICF)
-elseif (APPLE)
-    # Use a wrapper around ld64 that respects segprot's `max_prot` value in order
-    # to make our executable memory writable (required for mod function patching)
-    target_link_options(Zelda64Recompiled PRIVATE
-        "-fuse-ld=${CMAKE_SOURCE_DIR}/.github/macos/ld64"
-    )
 endif()
 
 if (WIN32)
@@ -266,90 +305,135 @@ if (WIN32)
         URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-devel-${SDL2_VERSION}-VC.zip
     )
     FetchContent_MakeAvailable(sdl2)
-    target_include_directories(Zelda64Recompiled PRIVATE
-        ${sdl2_SOURCE_DIR}/include
-    )
-    target_link_directories(Zelda64Recompiled PRIVATE
-        ${sdl2_SOURCE_DIR}/lib/x64
-    )
-
-    # Copy SDL2 and dxc DLLs to output folder as post build step
-    add_custom_command(TARGET Zelda64Recompiled POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${sdl2_SOURCE_DIR}/lib/x64/SDL2.dll"
-            "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxil.dll"
-            "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxcompiler.dll"
-            $<TARGET_FILE_DIR:Zelda64Recompiled>)
-
-    set_target_properties(
-        Zelda64Recompiled
-        PROPERTIES
-            LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
-            LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
-            LINK_FLAGS_RELWITHDEBINFO "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
-            LINK_FLAGS_MINSIZEREL "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
-    )
-
-    target_sources(Zelda64Recompiled PRIVATE ${CMAKE_SOURCE_DIR}/icons/app.rc)
-    target_link_libraries(Zelda64Recompiled PRIVATE SDL2 Winmm.lib)
 endif()
 
-if (APPLE)
-    find_package(SDL2 REQUIRED)
-    target_include_directories(Zelda64Recompiled PRIVATE ${SDL2_INCLUDE_DIRS})
-
-    set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-    find_package(Threads REQUIRED)
-
-    target_link_libraries(Zelda64Recompiled PRIVATE ${CMAKE_DL_LIBS} Threads::Threads SDL2::SDL2)
-
-    include(${CMAKE_SOURCE_DIR}/.github/macos/apple_bundle.cmake)
-endif()
-
-if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    find_package(SDL2 REQUIRED)
-    add_compile_definitions("RT64_SDL_WINDOW_VULKAN")
-
-    # Generate icon_bytes.c from the app icon PNG.
-    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
-        COMMAND file_to_c ${CMAKE_SOURCE_DIR}/icons/512.png icon_bytes ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
-        DEPENDS ${CMAKE_SOURCE_DIR}/icons/512.png
+# Configures an executable with everything that's shared between the games.
+function(zelda64_setup_executable TARGET)
+    target_include_directories(${TARGET} PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
+        ${CMAKE_SOURCE_DIR}/lib/concurrentqueue
+        ${CMAKE_SOURCE_DIR}/lib/GamepadMotionHelpers
+        ${CMAKE_SOURCE_DIR}/lib/RmlUi/Include
+        ${CMAKE_SOURCE_DIR}/lib/RmlUi/Backends
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/hlslpp/include
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/inc
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/rhi
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/render
+        ${CMAKE_SOURCE_DIR}/lib/freetype-windows-binaries/include
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/nativefiledialog-extended/src/include
+        ${CMAKE_SOURCE_DIR}/lib/SlotMap
+        ${CMAKE_BINARY_DIR}/shaders
+        ${CMAKE_CURRENT_BINARY_DIR}
     )
-    target_sources(Zelda64Recompiled PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c)
 
-    message(STATUS "SDL2_FOUND = ${SDL2_FOUND}")
-    message(STATUS "SDL2_INCLUDE_DIRS = ${SDL2_INCLUDE_DIRS}")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+        target_compile_options(${TARGET} PRIVATE
+            -march=nehalem
+            -fno-strict-aliasing
+            -fms-extensions
+        )
+    else()
+        target_compile_options(${TARGET} PRIVATE
+            -fno-strict-aliasing
+            -fms-extensions
+        )
+    endif()
 
-    target_include_directories(Zelda64Recompiled PRIVATE ${SDL2_INCLUDE_DIRS})
+    if (MSVC)
+        # Disable identical code folding, since this breaks mod function patching as multiple functions can get merged into one.
+        target_link_options(${TARGET} PRIVATE /OPT:NOICF)
+    elseif (APPLE)
+        # Use a wrapper around ld64 that respects segprot's `max_prot` value in order
+        # to make our executable memory writable (required for mod function patching)
+        target_link_options(${TARGET} PRIVATE
+            "-fuse-ld=${CMAKE_SOURCE_DIR}/.github/macos/ld64"
+        )
+    endif()
 
-    find_package(Freetype REQUIRED)
+    if (WIN32)
+        target_include_directories(${TARGET} PRIVATE
+            ${sdl2_SOURCE_DIR}/include
+        )
+        target_link_directories(${TARGET} PRIVATE
+            ${sdl2_SOURCE_DIR}/lib/x64
+        )
 
-    message(STATUS "FREETYPE_FOUND = ${FREETYPE_FOUND}")
-    message(STATUS "FREETYPE_INCLUDE_DIRS = ${FREETYPE_INCLUDE_DIRS}")
-    message(STATUS "FREETYPE_LIBRARIES = ${FREETYPE_LIBRARIES}")
+        # Copy SDL2 and dxc DLLs to output folder as post build step
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${sdl2_SOURCE_DIR}/lib/x64/SDL2.dll"
+                "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxil.dll"
+                "${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/dxc/bin/x64/dxcompiler.dll"
+                $<TARGET_FILE_DIR:${TARGET}>)
 
-    include_directories(${FREETYPE_LIBRARIES})
-    target_link_libraries(Zelda64Recompiled PRIVATE ${FREETYPE_LIBRARIES} SDL2::SDL2)
+        set_target_properties(
+            ${TARGET}
+            PROPERTIES
+                LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
+                LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+                LINK_FLAGS_RELWITHDEBINFO "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+                LINK_FLAGS_MINSIZEREL "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+        )
 
-    set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-    find_package(Threads REQUIRED)
+        target_sources(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/icons/app.rc)
+        target_link_libraries(${TARGET} PRIVATE SDL2 Winmm.lib)
+    endif()
 
-    target_link_libraries(Zelda64Recompiled PRIVATE "-latomic -static-libstdc++" ${CMAKE_DL_LIBS} Threads::Threads)
-endif()
+    if (APPLE)
+        find_package(SDL2 REQUIRED)
+        target_include_directories(${TARGET} PRIVATE ${SDL2_INCLUDE_DIRS})
 
-target_link_libraries(Zelda64Recompiled PRIVATE
-    PatchesLib
-    RecompiledFuncs
-    librecomp
-    ultramodern
-    rt64
-    RmlUi::Core
-    RmlUi::Debugger
-    nfd
-    lunasvg
-)
+        set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+        set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+        find_package(Threads REQUIRED)
+
+        target_link_libraries(${TARGET} PRIVATE ${CMAKE_DL_LIBS} Threads::Threads SDL2::SDL2)
+
+    endif()
+
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        find_package(SDL2 REQUIRED)
+        add_compile_definitions("RT64_SDL_WINDOW_VULKAN")
+
+        message(STATUS "SDL2_FOUND = ${SDL2_FOUND}")
+        message(STATUS "SDL2_INCLUDE_DIRS = ${SDL2_INCLUDE_DIRS}")
+
+        target_include_directories(${TARGET} PRIVATE ${SDL2_INCLUDE_DIRS})
+
+        find_package(Freetype REQUIRED)
+
+        message(STATUS "FREETYPE_FOUND = ${FREETYPE_FOUND}")
+        message(STATUS "FREETYPE_INCLUDE_DIRS = ${FREETYPE_INCLUDE_DIRS}")
+        message(STATUS "FREETYPE_LIBRARIES = ${FREETYPE_LIBRARIES}")
+
+        include_directories(${FREETYPE_LIBRARIES})
+        target_link_libraries(${TARGET} PRIVATE ${FREETYPE_LIBRARIES} SDL2::SDL2)
+
+        set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+        set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+        find_package(Threads REQUIRED)
+
+        target_link_libraries(${TARGET} PRIVATE "-latomic -static-libstdc++" ${CMAKE_DL_LIBS} Threads::Threads)
+    endif()
+
+    target_link_libraries(${TARGET} PRIVATE
+        Zelda64SharedData
+        librecomp
+        ultramodern
+        rt64
+        RmlUi::Core
+        RmlUi::Debugger
+        nfd
+        lunasvg
+    )
+
+    target_sources(${TARGET} PRIVATE ${SOURCES})
+
+    set_property(TARGET ${TARGET} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endfunction()
 
 # TODO fix the rt64 CMake script so that this doesn't need to be duplicated here
 # For DXC
@@ -383,30 +467,80 @@ else()
     endif()
 endif()
 
-build_vertex_shader(Zelda64Recompiled "shaders/InterfaceVS.hlsl" "shaders/InterfaceVS.hlsl")
-build_pixel_shader(Zelda64Recompiled "shaders/InterfacePS.hlsl" "shaders/InterfacePS.hlsl")
+# Zelda64SharedData - Generated data shared by every game's executable. This is built once so that multiple
+# executables don't attach the same custom commands.
+add_library(Zelda64SharedData STATIC)
 
-# Embed all .nrm files in the "mods" directory
-file(GLOB NRM_FILES "${CMAKE_SOURCE_DIR}/mods/*.nrm")
+build_vertex_shader(Zelda64SharedData "shaders/InterfaceVS.hlsl" "shaders/InterfaceVS.hlsl")
+build_pixel_shader(Zelda64SharedData "shaders/InterfacePS.hlsl" "shaders/InterfacePS.hlsl")
 
-set(GENERATED_NRM_SOURCES "")
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    # Generate icon_bytes.c from the app icon PNG.
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
+        COMMAND file_to_c ${CMAKE_SOURCE_DIR}/icons/512.png icon_bytes ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
+        DEPENDS ${CMAKE_SOURCE_DIR}/icons/512.png
+    )
+    target_sources(Zelda64SharedData PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c)
+endif()
 
-foreach(NRM_FILE ${NRM_FILES})
-    get_filename_component(NRM_NAME ${NRM_FILE} NAME_WE)
-    set(OUT_C "${CMAKE_CURRENT_BINARY_DIR}/mods/${NRM_NAME}.c")
-    set(OUT_H "${CMAKE_CURRENT_BINARY_DIR}/mods/${NRM_NAME}.h")
+if (ZELDA64_BUILD_MM)
+    # Majora's Mask executable
+    add_executable(Zelda64Recompiled)
+    zelda64_setup_executable(Zelda64Recompiled)
 
-    add_custom_command(
-        OUTPUT ${OUT_C} ${OUT_H}
-        COMMAND file_to_c ${NRM_FILE} ${NRM_NAME} ${OUT_C} ${OUT_H}
-        DEPENDS ${NRM_FILE}
+    target_sources(Zelda64Recompiled PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/game/scene_table.cpp
+        ${CMAKE_SOURCE_DIR}/rsp/aspMain.cpp
+        ${CMAKE_SOURCE_DIR}/rsp/njpgdspMain.cpp
     )
 
-    list(APPEND GENERATED_NRM_SOURCES ${OUT_C})
-endforeach()
+    target_link_libraries(Zelda64Recompiled PRIVATE
+        PatchesLib
+        RecompiledFuncs
+    )
 
-target_sources(Zelda64Recompiled PRIVATE ${GENERATED_NRM_SOURCES})
+    # Embed all .nrm files in the "mods" directory
+    file(GLOB NRM_FILES "${CMAKE_SOURCE_DIR}/mods/*.nrm")
 
-target_sources(Zelda64Recompiled PRIVATE ${SOURCES})
+    set(GENERATED_NRM_SOURCES "")
 
-set_property(TARGET Zelda64Recompiled PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+    foreach(NRM_FILE ${NRM_FILES})
+        get_filename_component(NRM_NAME ${NRM_FILE} NAME_WE)
+        set(OUT_C "${CMAKE_CURRENT_BINARY_DIR}/mods/${NRM_NAME}.c")
+        set(OUT_H "${CMAKE_CURRENT_BINARY_DIR}/mods/${NRM_NAME}.h")
+
+        add_custom_command(
+            OUTPUT ${OUT_C} ${OUT_H}
+            COMMAND file_to_c ${NRM_FILE} ${NRM_NAME} ${OUT_C} ${OUT_H}
+            DEPENDS ${NRM_FILE}
+        )
+
+        list(APPEND GENERATED_NRM_SOURCES ${OUT_C})
+    endforeach()
+
+    target_sources(Zelda64Recompiled PRIVATE ${GENERATED_NRM_SOURCES})
+
+    if (APPLE)
+        include(${CMAKE_SOURCE_DIR}/.github/macos/apple_bundle.cmake)
+    endif()
+endif()
+
+if (ZELDA64_BUILD_OOT)
+    # Ocarina of Time executable
+    add_executable(Ocarina64Recompiled)
+    zelda64_setup_executable(Ocarina64Recompiled)
+
+    target_compile_definitions(Ocarina64Recompiled PRIVATE ZELDA64_GAME_OOT)
+
+    target_sources(Ocarina64Recompiled PRIVATE
+        ${CMAKE_SOURCE_DIR}/oot/src/scene_table.cpp
+        ${CMAKE_SOURCE_DIR}/oot/src/oot_stubs.cpp
+        ${CMAKE_SOURCE_DIR}/oot/rsp/aspMain.cpp
+        ${CMAKE_SOURCE_DIR}/oot/rsp/njpgdspMain.cpp
+    )
+
+    target_link_libraries(Ocarina64Recompiled PRIVATE
+        PatchesLibOoT
+        RecompiledFuncsOoT
+    )
+endif()

@@ -9,6 +9,11 @@
 namespace zelda64 {
     constexpr std::u8string_view program_id = u8"Zelda64Recompiled";
     constexpr std::string_view program_name = "Zelda 64: Recompiled";
+#ifdef ZELDA64_GAME_OOT
+    constexpr const char* window_title = "Ocarina of Time: Recompiled";
+#else
+    constexpr const char* window_title = "Zelda 64: Recompiled";
+#endif
 
     // TODO: Move loading configs to the runtime once we have a way to allow per-project customization.
     void load_config();

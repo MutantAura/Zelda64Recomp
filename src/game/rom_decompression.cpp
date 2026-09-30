@@ -64,11 +64,22 @@ constexpr uint32_t byteswap(uint32_t val) {
 }
 #endif
 
-// Produces a decompressed MM rom. This is only needed because the game has compressed code.
+struct DecompressionParams {
+    // The game code in the ROM header (0x3B-0x3E).
+    char game_code[4];
+    // ROM address of the dmadata table.
+    size_t dma_data_rom_addr;
+    // Size of the decompressed ROM.
+    size_t decompressed_size;
+    // Value used to fill the space after the last file.
+    uint8_t padding_value;
+};
+
+// Produces a decompressed Zelda 64 rom from its dmadata table. This is only needed because the games have compressed code.
 // For other recomps using this repo as an example, you can omit the decompression routine and
 // set the corresponding fields in the GameEntry if the game doesn't have compressed code,
 // even if it does have compressed data.
-std::vector<uint8_t> zelda64::decompress_mm(std::span<const uint8_t> compressed_rom) {
+static std::vector<uint8_t> decompress_zelda64(std::span<const uint8_t> compressed_rom, const DecompressionParams& params) {
     // Sanity check the rom size and header. These should already be correct from the runtime's check,
     // but it should prevent this file from accidentally being copied to another recomp.
     if (compressed_rom.size() != 0x2000000) {
@@ -76,7 +87,7 @@ std::vector<uint8_t> zelda64::decompress_mm(std::span<const uint8_t> compressed_
         return {};
     }
 
-    if (compressed_rom[0x3B] != 'N' || compressed_rom[0x3C] != 'Z' || compressed_rom[0x3D] != 'S' || compressed_rom[0x3E] != 'E') {
+    if (memcmp(compressed_rom.data() + 0x3B, params.game_code, sizeof(params.game_code)) != 0) {
         assert(false);
         return {};
     }
@@ -98,10 +109,10 @@ std::vector<uint8_t> zelda64::decompress_mm(std::span<const uint8_t> compressed_
     DmaDataEntry cur_entry{};
     size_t cur_entry_index = 0;
 
-    constexpr size_t dma_data_rom_addr = 0x1A500;
+    const size_t dma_data_rom_addr = params.dma_data_rom_addr;
 
     std::vector<uint8_t> ret{};
-    ret.resize(0x2F00000);
+    ret.resize(params.decompressed_size);
 
     size_t content_end = 0;
 
@@ -161,8 +172,28 @@ std::vector<uint8_t> zelda64::decompress_mm(std::span<const uint8_t> compressed_
     // Align the start of padding to the closest 0x1000 (matches decomp rom decompression behavior).
     content_end = (content_end + 0x1000 - 1) & -0x1000;
 
-    // Write 0xFF as the padding.
-    std::fill(ret.begin() + content_end, ret.end(), 0xFF);
+    // Write the padding.
+    std::fill(ret.begin() + content_end, ret.end(), params.padding_value);
 
     return ret;
+}
+
+std::vector<uint8_t> zelda64::decompress_mm(std::span<const uint8_t> compressed_rom) {
+    return decompress_zelda64(compressed_rom, DecompressionParams{
+        .game_code = { 'N', 'Z', 'S', 'E' },
+        .dma_data_rom_addr = 0x1A500,
+        .decompressed_size = 0x2F00000,
+        .padding_value = 0xFF,
+    });
+}
+
+// Matches the output of the OoT decomp's decompress_baserom.py for NTSC 1.0 (US), except for the header CRC
+// which isn't recalculated as it doesn't affect any code.
+std::vector<uint8_t> zelda64::decompress_oot(std::span<const uint8_t> compressed_rom) {
+    return decompress_zelda64(compressed_rom, DecompressionParams{
+        .game_code = { 'C', 'Z', 'L', 'E' },
+        .dma_data_rom_addr = 0x7430,
+        .decompressed_size = 0x347F000,
+        .padding_value = 0x00,
+    });
 }
