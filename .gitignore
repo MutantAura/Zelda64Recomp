@@ -66,3 +66,6 @@ RSPRecomp
 .idea
 build-*
 cmake-build-*
+# Local build script and its packaged output
+build.bat
+release-oot/
