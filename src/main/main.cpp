@@ -28,6 +28,7 @@
 #endif
 
 #include "recomp_ui.h"
+#include "zelda_gz.h"
 #include "recomp_input.h"
 #include "gc_adapter.h"
 #include "zelda_config.h"
@@ -364,6 +365,7 @@ std::vector<recomp::GameEntry> supported_games = {
         .has_compressed_code = true,
         .entrypoint_address = get_entrypoint_address(),
         .entrypoint = recomp_entrypoint,
+        .on_init_callback = zelda64::gz::on_init,
     },
 #else
     {

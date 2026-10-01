@@ -56,3 +56,7 @@ recomp_get_actor_data = 0x8F0000D0;
 recomp_get_actor_spawn_index = 0x8F0000D4;
 recomp_get_pause_lag_vis = 0x8F0000D8;
 recomp_get_unpause_lag_vis = 0x8F0000DC;
+recomp_gz_active = 0x8F0000E0;
+recomp_gz_disp_hook = 0x8F0000E4;
+recomp_gz_input_hook = 0x8F0000E8;
+recomp_gz_ocarina_update_hook = 0x8F0000EC;

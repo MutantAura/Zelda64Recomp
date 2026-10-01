@@ -69,3 +69,7 @@ cmake-build-*
 # Local build script and its packaged output
 build.bat
 release-oot/
+
+# Generated inputs and output for recompiling OoT with gz
+oot/gz/
+oot/RecompiledFuncsGz/

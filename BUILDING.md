@@ -110,6 +110,23 @@ The patches in `oot/patches` are built with the same MIPS-capable `clang` and `l
 > [!IMPORTANT]
 > As with Majora's Mask, you should select the standard (compressed) ROM in the game itself, not the decompressed one.
 
+### Optional: building gz in
+[gz](https://github.com/glankk/gz) (the practice ROM) can be built into `Ocarina64Recompiled`, which adds a "Start gz" option to the launcher. "Start game" runs the game as normal. gz's hooks are recompiled into the game and do nothing unless gz was started. The player still selects the normal, unmodified ROM.
+
+1. Build gz for `oot-1.0` with the [n64 toolchain](https://github.com/glankk/n64) gz uses, without LTO. LTO adds division by zero traps the recompiler doesn't support. From the gz repository:
+   ```bash
+   make OBJDIR=obj-recomp BINDIR=bin-recomp HOOKDIR=hooks-recomp CFLAGS='-O2 -g' CXXFLAGS='-O2 -g' LDFLAGS='-O2 -g' gz-oot-1.0
+   ```
+2. From the repository root, generate the gz inputs in `oot/gz` and recompile the game with gz into `oot/RecompiledFuncsGz`. The ROM and RSP code must have been generated as above.
+   ```bash
+   python oot/tools/gen_gz.py --recompile ./N64Recomp /path/to/gz
+   ```
+3. Configure CMake with `-DZELDA64_OOT_GZ=ON` and build `Ocarina64Recompiled`.
+
+`gen_gz.py` applies gz's hooks to the ROM given to the recompiler and adds gz's functions from `gz.elf` to the symbols. It also stubs out code that accesses flashcarts, SD cards and the remote debugger. The gz image is embedded in the executable and loaded into memory at boot.
+
+Features that need that hardware are unavailable: saving and loading files to an SD card, the remote debugger, and resetting from gz's menu.
+
 ## GameCube Controller Adapter
 
 Both games support Nintendo's official GameCube controller adapter (WUP-028) and compatible adapters in Wii U mode, using [libusb](https://libusb.info/). Each connected controller appears as a regular controller named "GameCube Controller (Port N)", so it can be rebound in the controls menu and supports rumble (which needs the adapter's second USB plug to be connected). The digital clicks at the end of the L and R triggers can be bound separately from the analog triggers and are shown as "L Click" and "R Click".

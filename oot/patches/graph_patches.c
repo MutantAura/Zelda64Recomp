@@ -29,6 +29,21 @@ void recomp_crash(const char* err) {
     *(volatile int*)0 = 0;
 }
 
+DECLARE_FUNC(s32, recomp_gz_active);
+DECLARE_FUNC(void, recomp_gz_disp_hook, TwoHeadGfxArena* arena, void* start, size_t size);
+DECLARE_FUNC(void, recomp_gz_input_hook);
+DECLARE_FUNC(void, recomp_gz_ocarina_update_hook);
+
+// gz (the practice ROM) hooks into THGA_Init to track the display list buffers, which it uses for frame advance.
+static void init_gfx_arena(TwoHeadGfxArena* arena, void* start, size_t size) {
+    if (recomp_gz_active()) {
+        recomp_gz_disp_hook(arena, start, size);
+    }
+    else {
+        THGA_Init(arena, start, size);
+    }
+}
+
 // @recomp Use the bigger gfx pools and enable RT64 extended GBI mode.
 RECOMP_PATCH void Graph_InitTHGA(GraphicsContext* gfxCtx) {
     GfxPool* pool = &gGfxPools[gfxCtx->gfxPoolIdx & 1];
@@ -36,15 +51,31 @@ RECOMP_PATCH void Graph_InitTHGA(GraphicsContext* gfxCtx) {
 
     pool->headMagic = GFXPOOL_HEAD_MAGIC;
     pool->tailMagic = GFXPOOL_TAIL_MAGIC;
-    THGA_Init(&gfxCtx->polyOpa, bigger_pool->polyOpaBuffer, sizeof(bigger_pool->polyOpaBuffer));
-    THGA_Init(&gfxCtx->polyXlu, bigger_pool->polyXluBuffer, sizeof(bigger_pool->polyXluBuffer));
-    THGA_Init(&gfxCtx->overlay, bigger_pool->overlayBuffer, sizeof(bigger_pool->overlayBuffer));
-    THGA_Init(&gfxCtx->work, bigger_pool->workBuffer, sizeof(bigger_pool->workBuffer));
 
-    gfxCtx->polyOpaBuffer = bigger_pool->polyOpaBuffer;
-    gfxCtx->polyXluBuffer = bigger_pool->polyXluBuffer;
-    gfxCtx->overlayBuffer = bigger_pool->overlayBuffer;
-    gfxCtx->workBuffer = bigger_pool->workBuffer;
+    // @recomp gz's frame advance redraws the previous frame by copying the game's gfx pool, so use the game's own
+    // buffers when gz is running.
+    if (recomp_gz_active()) {
+        init_gfx_arena(&gfxCtx->polyOpa, pool->polyOpaBuffer, sizeof(pool->polyOpaBuffer));
+        init_gfx_arena(&gfxCtx->polyXlu, pool->polyXluBuffer, sizeof(pool->polyXluBuffer));
+        init_gfx_arena(&gfxCtx->overlay, pool->overlayBuffer, sizeof(pool->overlayBuffer));
+        init_gfx_arena(&gfxCtx->work, pool->workBuffer, sizeof(pool->workBuffer));
+
+        gfxCtx->polyOpaBuffer = pool->polyOpaBuffer;
+        gfxCtx->polyXluBuffer = pool->polyXluBuffer;
+        gfxCtx->overlayBuffer = pool->overlayBuffer;
+        gfxCtx->workBuffer = pool->workBuffer;
+    }
+    else {
+        init_gfx_arena(&gfxCtx->polyOpa, bigger_pool->polyOpaBuffer, sizeof(bigger_pool->polyOpaBuffer));
+        init_gfx_arena(&gfxCtx->polyXlu, bigger_pool->polyXluBuffer, sizeof(bigger_pool->polyXluBuffer));
+        init_gfx_arena(&gfxCtx->overlay, bigger_pool->overlayBuffer, sizeof(bigger_pool->overlayBuffer));
+        init_gfx_arena(&gfxCtx->work, bigger_pool->workBuffer, sizeof(bigger_pool->workBuffer));
+
+        gfxCtx->polyOpaBuffer = bigger_pool->polyOpaBuffer;
+        gfxCtx->polyXluBuffer = bigger_pool->polyXluBuffer;
+        gfxCtx->overlayBuffer = bigger_pool->overlayBuffer;
+        gfxCtx->workBuffer = bigger_pool->workBuffer;
+    }
 
     gfxCtx->curFrameBuffer = SysCfb_GetFbPtr(gfxCtx->fbIdx % 2);
     gfxCtx->unk_014 = 0;
@@ -61,7 +92,13 @@ RECOMP_PATCH void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
     gameState->inPreNMIState = false;
     Graph_InitTHGA(gfxCtx);
 
-    GameState_ReqPadData(gameState);
+    // @recomp gz hooks the input update and the game state update (the latter in the recompiled game code).
+    if (recomp_gz_active()) {
+        recomp_gz_input_hook();
+    }
+    else {
+        GameState_ReqPadData(gameState);
+    }
     GameState_Update(gameState);
 
     // @recomp Determine the number of VIs for this frame, including any extra ones requested by patches.
@@ -114,7 +151,13 @@ RECOMP_PATCH void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
     gfxCtx->gfxPoolIdx++;
     gfxCtx->fbIdx++;
 
-    Audio_Update();
+    // @recomp gz hooks the audio update to sync the ocarina when frame advancing.
+    if (recomp_gz_active()) {
+        recomp_gz_ocarina_update_hook();
+    }
+    else {
+        Audio_Update();
+    }
 
     {
         OSTime timeNow = osGetTime();

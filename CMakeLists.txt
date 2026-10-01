@@ -82,8 +82,20 @@ endif()
 option(ZELDA64_BUILD_MM "Build the Majora's Mask executable (Zelda64Recompiled)" ${ZELDA64_BUILD_MM_DEFAULT})
 option(ZELDA64_BUILD_OOT "Build the Ocarina of Time executable (Ocarina64Recompiled)" ${ZELDA64_BUILD_OOT_DEFAULT})
 
+option(ZELDA64_OOT_GZ "Build gz (the practice ROM) into the Ocarina of Time executable, see BUILDING.md" OFF)
+
 message(STATUS "Majora's Mask executable: ${ZELDA64_BUILD_MM}")
 message(STATUS "Ocarina of Time executable: ${ZELDA64_BUILD_OOT}")
+if (ZELDA64_BUILD_OOT)
+    message(STATUS "Ocarina of Time gz support: ${ZELDA64_OOT_GZ}")
+endif()
+
+# The recompiler output for OoT, which includes gz's hooks and code when it's built in.
+if (ZELDA64_OOT_GZ)
+    set(OOT_FUNCS_DIR ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncsGz)
+else()
+    set(OOT_FUNCS_DIR ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs)
+endif()
 
 # Build patches elf
 if(NOT DEFINED PATCHES_C_COMPILER)
@@ -183,8 +195,8 @@ if (ZELDA64_BUILD_OOT)
         ${CMAKE_SOURCE_DIR}/lib/N64ModernRuntime/N64Recomp/include
     )
 
-    file(GLOB OOT_FUNC_C_SOURCES ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs/*.c)
-    file(GLOB OOT_FUNC_CXX_SOURCES ${CMAKE_SOURCE_DIR}/oot/RecompiledFuncs/*.cpp)
+    file(GLOB OOT_FUNC_C_SOURCES ${OOT_FUNCS_DIR}/*.c)
+    file(GLOB OOT_FUNC_CXX_SOURCES ${OOT_FUNCS_DIR}/*.cpp)
 
     target_sources(RecompiledFuncsOoT PRIVATE ${OOT_FUNC_C_SOURCES} ${OOT_FUNC_CXX_SOURCES})
 
@@ -251,6 +263,7 @@ set (SOURCES
     ${CMAKE_SOURCE_DIR}/src/game/recomp_data_api.cpp
     ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
     ${CMAKE_SOURCE_DIR}/src/game/gc_adapter.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/gz.cpp
 
     ${CMAKE_SOURCE_DIR}/src/ui/ui_renderer.cpp
     ${CMAKE_SOURCE_DIR}/src/ui/ui_state.cpp
@@ -587,4 +600,18 @@ if (ZELDA64_BUILD_OOT)
         PatchesLibOoT
         RecompiledFuncsOoT
     )
+
+    if (ZELDA64_OOT_GZ)
+        target_compile_definitions(Ocarina64Recompiled PRIVATE ZELDA64_OOT_GZ)
+        target_include_directories(Ocarina64Recompiled PRIVATE ${CMAKE_SOURCE_DIR}/oot/gz ${CMAKE_CURRENT_BINARY_DIR}/gz)
+
+        # Embed the gz image, which is loaded into memory at boot.
+        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gz/gz_image_bin.c ${CMAKE_CURRENT_BINARY_DIR}/gz/gz_image_bin.h
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/gz
+            COMMAND file_to_c ${CMAKE_SOURCE_DIR}/oot/gz/gz_image.bin gz_image_bin ${CMAKE_CURRENT_BINARY_DIR}/gz/gz_image_bin.c ${CMAKE_CURRENT_BINARY_DIR}/gz/gz_image_bin.h
+            DEPENDS ${CMAKE_SOURCE_DIR}/oot/gz/gz_image.bin
+        )
+        target_sources(Ocarina64Recompiled PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/gz/gz_image_bin.c)
+        set_source_files_properties(${CMAKE_SOURCE_DIR}/src/game/gz.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/gz/gz_image_bin.h)
+    endif()
 endif()

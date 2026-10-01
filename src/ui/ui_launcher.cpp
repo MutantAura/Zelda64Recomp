@@ -2,6 +2,7 @@
 #include "zelda_config.h"
 #include "zelda_support.h"
 #include "zelda_game.h"
+#include "zelda_gz.h"
 #include "librecomp/game.hpp"
 #include "ultramodern/ultramodern.hpp"
 #include "RmlUi/Core.h"
@@ -11,6 +12,7 @@
 static std::string version_string;
 static std::string game_name = zelda64::is_oot() ? "Ocarina of Time" : "Majora's Mask";
 static bool game_is_mm = zelda64::is_mm();
+static bool gz_available = zelda64::gz::available();
 
 Rml::DataModelHandle model_handle;
 bool mm_rom_valid = false;
@@ -82,6 +84,14 @@ public:
         );
         recompui::register_event(listener, "start_game",
             [](const std::string& param, Rml::Event& event) {
+                zelda64::gz::set_started(false);
+                recomp::start_game(supported_games[0].game_id);
+                recompui::hide_all_contexts();
+            }
+        );
+        recompui::register_event(listener, "start_gz",
+            [](const std::string& param, Rml::Event& event) {
+                zelda64::gz::set_started(true);
                 recomp::start_game(supported_games[0].game_id);
                 recompui::hide_all_contexts();
             }
@@ -119,6 +129,7 @@ public:
         constructor.Bind("mm_rom_valid", &mm_rom_valid);
         constructor.Bind("game_name", &game_name);
         constructor.Bind("game_is_mm", &game_is_mm);
+        constructor.Bind("gz_available", &gz_available);
 
         version_string = recomp::get_project_version().to_string();
         constructor.Bind("version_number", &version_string);

@@ -260,6 +260,10 @@ RECOMP_PATCH void Graph_TaskSet00(GraphicsContext* gfxCtx) {
     // @recomp Immediately wait on the task to complete to minimize latency for the next one.
     osRecvMesg(&gfxCtx->queue, &msg, OS_MESG_BLOCK);
 
+    // @recomp Put the completion message back, as the queue normally holds it until the next frame's task is sent.
+    // gz waits on it when loading a savestate. It's flushed before the next task is sent.
+    osSendMesg(&gfxCtx->queue, msg, OS_MESG_NOBLOCK);
+
     // @recomp Wait on the VI framebuffer to change if this task has a framebuffer swap.
     if (scTask->flags & OS_SC_SWAPBUFFER) {
         int viCounter = 0;

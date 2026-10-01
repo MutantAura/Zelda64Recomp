@@ -1,5 +1,7 @@
 #include "ovl_patches.hpp"
-#ifdef ZELDA64_GAME_OOT
+#if defined(ZELDA64_GAME_OOT) && defined(ZELDA64_OOT_GZ)
+#include "../../oot/RecompiledFuncsGz/recomp_overlays.inl"
+#elif defined(ZELDA64_GAME_OOT)
 #include "../../oot/RecompiledFuncs/recomp_overlays.inl"
 #else
 #include "../../RecompiledFuncs/recomp_overlays.inl"
