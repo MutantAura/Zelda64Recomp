@@ -60,17 +60,17 @@
 }
 
 // Control stick snapping slider in the controls menu header.
-.controls-stick-snap {
+.controls-stick-option {
     flex: 1 1 auto;
-    max-width: 520dp;
+    max-width: 360dp;
     align-items: center;
     margin-top: 0dp;
     margin-left: space(24);
 }
 
-.controls-stick-snap__label {
+.controls-stick-option__label {
     width: auto;
-    min-width: 180dp;
+    min-width: 160dp;
 }
 
 .config__hz-wrapper {

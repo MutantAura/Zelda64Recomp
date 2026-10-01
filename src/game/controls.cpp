@@ -8,6 +8,7 @@
 #include "librecomp/helpers.hpp"
 #include "recomp_input.h"
 #include "zelda_config.h"
+#include "zelda_game.h"
 #include "ultramodern/ultramodern.hpp"
 
 // Arrays that hold the mappings for every input for keyboard and controller respectively.
@@ -107,6 +108,60 @@ static void apply_stick_snapping(float* x, float* y) {
     }
 }
 
+// Converts a stick axis value relative to Ocarina of Time's deadzone to the input value that gives it, rounded so
+// the raw value the game reads (which is truncated from this) is the nearest one.
+static float oot_relative_to_input(float relative) {
+    constexpr float game_deadzone = 7.0f;
+    constexpr float raw_max = 127.0f;
+
+    float magnitude = std::round(std::fabs(relative));
+    if (magnitude == 0.0f) {
+        return 0.0f;
+    }
+    float raw = std::min(magnitude + game_deadzone, raw_max);
+    return std::copysign(std::min((raw + 0.5f) / raw_max, 1.0f), relative);
+}
+
+// Ocarina of Time ignores raw stick values up to 7 on each axis, and Link turns in place without moving while the
+// stick's magnitude beyond that is under 20. This is the ESS range, raw values 8 to 27 when held straight in one
+// direction. With the ESS range option set, that range is spread over the configured percentage of the stick's travel
+// outside the deadzone, and the rest of the stick's range fits into the remaining travel. The result is converted
+// relative to the game's deadzone so the ESS range is the same size in every direction.
+static void apply_ess_range(float* x, float* y) {
+    if (!zelda64::is_oot()) {
+        return;
+    }
+
+    int percent = zelda64::get_ess_range();
+    if (percent <= 0) {
+        return;
+    }
+
+    float magnitude = std::sqrt(*x * *x + *y * *y);
+    if (magnitude == 0.0f) {
+        return;
+    }
+
+    constexpr float game_deadzone = 7.0f;
+    constexpr float ess_start = 8.0f;
+    constexpr float ess_end = 27.0f;
+    constexpr float raw_max = 127.0f;
+
+    float travel = std::min(magnitude, 1.0f);
+    float ess_travel = percent / 100.0f;
+    float raw_magnitude;
+    if (travel <= ess_travel) {
+        raw_magnitude = ess_start + (ess_end - ess_start) * (travel / ess_travel);
+    }
+    else {
+        raw_magnitude = ess_end + (raw_max - ess_end) * ((travel - ess_travel) / (1.0f - ess_travel));
+    }
+
+    float relative_magnitude = raw_magnitude - game_deadzone;
+    *x = oot_relative_to_input(relative_magnitude * *x / magnitude);
+    *y = oot_relative_to_input(relative_magnitude * *y / magnitude);
+}
+
 // Reads the current state of the N64 controller from the bound inputs.
 static void get_live_n64_input(uint16_t* buttons_out, float* x_out, float* y_out) {
     uint16_t cur_buttons = 0;
@@ -130,6 +185,7 @@ static void get_live_n64_input(uint16_t* buttons_out, float* x_out, float* y_out
 
         recomp::apply_joystick_deadzone(joystick_x, joystick_y, &joystick_x, &joystick_y);
         apply_stick_snapping(&joystick_x, &joystick_y);
+        apply_ess_range(&joystick_x, &joystick_y);
 
         cur_x = recomp::get_input_analog(keyboard_input_mappings[(size_t)recomp::GameInput::X_AXIS_POS])
                 - recomp::get_input_analog(keyboard_input_mappings[(size_t)recomp::GameInput::X_AXIS_NEG]) + joystick_x;

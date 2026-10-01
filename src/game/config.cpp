@@ -245,6 +245,7 @@ bool save_general_config(const std::filesystem::path& path) {
     config_json["unpause_lag_vis"] = zelda64::get_unpause_lag_vis();
     config_json["input_lag_ms"] = zelda64::get_input_lag_ms();
     config_json["stick_snap_angle"] = zelda64::get_stick_snap_angle();
+    config_json["ess_range"] = zelda64::get_ess_range();
     config_json["debug_mode"] = zelda64::get_debug_mode_enabled();
 
     return save_json_with_backups(path, config_json);
@@ -265,6 +266,7 @@ void set_general_settings_from_json(const nlohmann::json& config_json) {
     zelda64::set_unpause_lag_vis(from_or_default(config_json, "unpause_lag_vis", 0));
     zelda64::set_input_lag_ms(from_or_default(config_json, "input_lag_ms", 0));
     zelda64::set_stick_snap_angle(from_or_default(config_json, "stick_snap_angle", 0));
+    zelda64::set_ess_range(from_or_default(config_json, "ess_range", 0));
     zelda64::set_debug_mode_enabled(from_or_default(config_json, "debug_mode", false));
 }
 

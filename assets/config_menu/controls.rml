@@ -19,17 +19,44 @@
                             <div class="toggle__icon toggle__icon--right"><div>␽</div></div>
                         </div>
                     </button>
+                    <!-- control stick deadzone -->
+                    <div class="config-option__range-wrapper config-option__list controls-stick-option">
+                        <label class="config-option__range-label controls-stick-option__label">Deadzone {{joystick_deadzone}}%</label>
+                        <input
+                            class="nav-vert"
+                            id="joystick_deadzone_input"
+                            type="range"
+                            min="0"
+                            max="100"
+                            style="flex: 1; margin: 0dp; nav-up: #tab_controls; nav-down: #stick_snap_input"
+                            data-value="joystick_deadzone"
+                        />
+                    </div>
                     <!-- control stick snapping -->
-                    <div class="config-option__range-wrapper config-option__list controls-stick-snap">
-                        <label class="config-option__range-label controls-stick-snap__label">Stick Snap {{stick_snap_angle == 0 ? 'Off' : stick_snap_angle + '°'}}</label>
+                    <div class="config-option__range-wrapper config-option__list controls-stick-option">
+                        <label class="config-option__range-label controls-stick-option__label">Stick Snap {{stick_snap_angle == 0 ? 'Off' : stick_snap_angle + '°'}}</label>
                         <input
                             class="nav-vert"
                             id="stick_snap_input"
                             type="range"
                             min="0"
                             max="22"
-                            style="flex: 1; margin: 0dp; nav-up: #tab_controls; nav-down: #input_row_button_0_0"
+                            data-style-nav-down="game_is_mm ? '#input_row_button_0_0' : '#ess_range_input'"
+                            style="flex: 1; margin: 0dp; nav-up: #joystick_deadzone_input"
                             data-value="stick_snap_angle"
+                        />
+                    </div>
+                    <!-- ESS range (Ocarina of Time only) -->
+                    <div data-if="!game_is_mm" class="config-option__range-wrapper config-option__list controls-stick-option">
+                        <label class="config-option__range-label controls-stick-option__label">ESS Range {{ess_range == 0 ? 'Off' : ess_range + '%'}}</label>
+                        <input
+                            class="nav-vert"
+                            id="ess_range_input"
+                            type="range"
+                            min="0"
+                            max="50"
+                            style="flex: 1; margin: 0dp; nav-up: #stick_snap_input; nav-down: #input_row_button_0_0"
+                            data-value="ess_range"
                         />
                     </div>
                 </div>

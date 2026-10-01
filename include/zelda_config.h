@@ -104,6 +104,12 @@ namespace zelda64 {
     int get_stick_snap_angle();
     void set_stick_snap_angle(int degrees);
 
+    // Ocarina of Time only. The percentage of the control stick's travel outside the deadzone that's used for the ESS
+    // range, the raw stick values from 8 to 27 where Link turns in place without moving. 0 disables it.
+    constexpr int max_ess_range = 50;
+    int get_ess_range();
+    void set_ess_range(int percent);
+
     // Artificial delay applied to controller input, in milliseconds.
     constexpr int max_input_lag_ms = 200;
     int get_input_lag_ms();

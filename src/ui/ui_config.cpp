@@ -245,6 +245,7 @@ struct ControlOptionsContext {
     int unpause_lag_vis; // 0 to zelda64::max_pause_lag_vis
     int input_lag_ms; // 0 to zelda64::max_input_lag_ms
     int stick_snap_angle; // 0 to zelda64::max_stick_snap_angle
+    int ess_range; // 0 to zelda64::max_ess_range
 };
 
 ControlOptionsContext control_options_context;
@@ -288,8 +289,8 @@ void recomp::set_mouse_sensitivity(int sensitivity) {
 
 void recomp::set_joystick_deadzone(int deadzone) {
     control_options_context.joystick_deadzone = deadzone;
-    if (general_model_handle) {
-        general_model_handle.DirtyVariable("joystick_deadzone");
+    if (controls_model_handle) {
+        controls_model_handle.DirtyVariable("joystick_deadzone");
     }
 }
 
@@ -395,6 +396,17 @@ void zelda64::set_stick_snap_angle(int degrees) {
     control_options_context.stick_snap_angle = std::clamp(degrees, 0, zelda64::max_stick_snap_angle);
     if (controls_model_handle) {
         controls_model_handle.DirtyVariable("stick_snap_angle");
+    }
+}
+
+int zelda64::get_ess_range() {
+    return control_options_context.ess_range;
+}
+
+void zelda64::set_ess_range(int percent) {
+    control_options_context.ess_range = std::clamp(percent, 0, zelda64::max_ess_range);
+    if (controls_model_handle) {
+        controls_model_handle.DirtyVariable("ess_range");
     }
 }
 
@@ -769,6 +781,9 @@ public:
         constructor.BindFunc("input_count", [](Rml::Variant& out) { out = static_cast<uint64_t>(recomp::get_num_inputs()); } );
         constructor.BindFunc("input_device_is_keyboard", [](Rml::Variant& out) { out = cur_device == recomp::InputDevice::Keyboard; } );
         constructor.Bind("stick_snap_angle", &control_options_context.stick_snap_angle);
+        constructor.Bind("joystick_deadzone", &control_options_context.joystick_deadzone);
+        constructor.Bind("ess_range", &control_options_context.ess_range);
+        constructor.Bind("game_is_mm", &game_is_mm);
 
         constructor.RegisterTransformFunc("get_input_name", [](const Rml::VariantList& inputs) {
             return Rml::Variant{recomp::get_input_name(static_cast<recomp::GameInput>(inputs.at(0).Get<size_t>()))};
@@ -974,7 +989,6 @@ public:
         constructor.Bind("rumble_strength", &control_options_context.rumble_strength);
         constructor.Bind("gyro_sensitivity", &control_options_context.gyro_sensitivity);
         constructor.Bind("mouse_sensitivity", &control_options_context.mouse_sensitivity);
-        constructor.Bind("joystick_deadzone", &control_options_context.joystick_deadzone);
         bind_option(constructor, "targeting_mode", &control_options_context.targeting_mode);
         bind_option(constructor, "background_input_mode", &control_options_context.background_input_mode);
         bind_option(constructor, "autosave_mode", &control_options_context.autosave_mode);
