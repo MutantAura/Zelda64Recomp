@@ -4,6 +4,7 @@
 #include "sys_cfb.h"
 #include "game.h"
 #include "audio.h"
+#include "regs.h"
 #include "../../patches/misc_funcs.h"
 
 // 10 times bigger than the game's normal buffers.
@@ -100,6 +101,17 @@ RECOMP_PATCH void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
         GameState_ReqPadData(gameState);
     }
     GameState_Update(gameState);
+
+    // @recomp gz adds its display list to the end of the overlay buffer every frame, including frames that aren't
+    // displayed, such as the one where the pause menu's background is captured. Drawing on top of that frame's
+    // framebuffer causes it to be shown for a frame, so remove gz's display list from frames that aren't displayed.
+    if (recomp_gz_active() && (R_GRAPH_TASKSET00_FLAGS & 1)) {
+        Gfx* last = gfxCtx->overlay.p - 1;
+        if (((void*)last >= gfxCtx->overlay.start) && (_SHIFTR(last->words.w0, 24, 8) == G_DL) &&
+            (last->words.w1 >= 0x80400000) && (last->words.w1 < 0x80800000)) {
+            gfxCtx->overlay.p = last;
+        }
+    }
 
     // @recomp Determine the number of VIs for this frame, including any extra ones requested by patches.
     recomp_frame_vis = R_UPDATE_RATE + recomp_extra_vis;

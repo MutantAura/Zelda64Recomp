@@ -31,3 +31,11 @@ stubs = [
 func = "Graph_TaskSet00"
 vram = 0x800A13F0
 value = 0x00000000 # jal osSetTimer -> nop
+
+# Hooks
+
+# Position the pause menu cursor's quads before drawing it. See oot/patches/kaleido_patches.c.
+[[patches.hook]]
+func = "KaleidoScope_DrawCursor"
+before_vram = 0x8081F760
+text = "{ extern void kaleido_draw_cursor_hook(uint8_t* rdram, recomp_context* ctx); gpr a0 = ctx->r4; gpr a1 = ctx->r5; gpr ra = ctx->r31; kaleido_draw_cursor_hook(rdram, ctx); ctx->r4 = a0; ctx->r5 = a1; ctx->r31 = ra; }"

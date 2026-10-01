@@ -294,6 +294,11 @@ def main():
                   f'value = 0x{patch["value"]:08X}\n\n'
     for name, addr in nop_patches:
         config += f'[[patches.instruction]]\nfunc = "{name}"\nvram = 0x{addr:08X}\nvalue = 0x00000000\n\n'
+    # Keep the base config's hooks.
+    for hook in base_patches.get("hook", []):
+        hook_text = hook["text"].replace("\\", "\\\\").replace('"', '\\"')
+        config += f'[[patches.hook]]\nfunc = "{hook["func"]}"\nbefore_vram = 0x{hook["before_vram"]:08X}\n' \
+                  f'text = "{hook_text}"\n\n'
     # gz's entry point replaces the game state's main function call, so call that directly unless gz was started.
     config += f'[[patches.hook]]\nfunc = "{start[0]}"\nbefore_vram = 0x{start[1]:08X}\n'
     config += f'text = "{{ extern int {GZ_ACTIVE_FUNC}(void); if (!{GZ_ACTIVE_FUNC}()) ' \
